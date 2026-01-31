@@ -205,7 +205,7 @@ namespace BASE.Service.Core.Database
             {
                 var dynamicParams = ConvertToDynamicParameters(param);
                 var result = await cnn.QueryAsync<T>(sql: commandText, param: dynamicParams, commandType: CommandType.Text);
-                return result.AsList();
+                return result.ToList();
             }
             catch
             {

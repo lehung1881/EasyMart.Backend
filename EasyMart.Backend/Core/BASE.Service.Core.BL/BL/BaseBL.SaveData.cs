@@ -108,7 +108,7 @@ namespace BASE.Service.Core.BL
                 throw new InvalidOperationException($"Primary key not defined for table '{tableName}'");
 
             // Lấy danh sách cột từ DB (đã có cache)
-            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn);
+            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn, tran);
             var dbColumnSet = new HashSet<string>(dbColumns, StringComparer.OrdinalIgnoreCase);
 
             // Lấy properties có thể map
@@ -412,7 +412,7 @@ namespace BASE.Service.Core.BL
             var primaryKeyName = firstModel.GetPrimaykeyField();
 
             // Lấy danh sách cột
-            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn);
+            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn, tran);
             var dbColumnSet = new HashSet<string>(dbColumns, StringComparer.OrdinalIgnoreCase);
             var props = GetMappableProperties(firstModel.GetType(), dbColumnSet);
 
@@ -445,7 +445,7 @@ namespace BASE.Service.Core.BL
                 {
                     var paramName = $"{prop.Name}_{i}";
                     valueParams.Add($"@{paramName}");
-                    parameters.Add(paramName, prop.GetValue(model) ?? DBNull.Value);
+                    parameters.Add(paramName, prop.GetValue(model));
                 }
 
                 valueRows.Add($"({string.Join(", ", valueParams)})");
@@ -470,7 +470,7 @@ namespace BASE.Service.Core.BL
             var tableName = firstModel.GetViewOrTableName();
             var primaryKeyName = firstModel.GetPrimaykeyField();
 
-            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn);
+            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn, tran);
             var dbColumnSet = new HashSet<string>(dbColumns, StringComparer.OrdinalIgnoreCase);
             var props = GetMappableProperties(firstModel.GetType(), dbColumnSet);
 
@@ -510,7 +510,7 @@ namespace BASE.Service.Core.BL
                     caseParts.Add($"WHEN `{primaryKeyName}` = @{pkParamName} THEN @{valueParamName}");
 
                     parameters.Add(pkParamName, pkValue);
-                    parameters.Add(valueParamName, propValue ?? DBNull.Value);
+                    parameters.Add(valueParamName, propValue);
 
                     if (prop == updateProps.First())
                     {
@@ -543,7 +543,7 @@ namespace BASE.Service.Core.BL
             var tableName = firstModel.GetViewOrTableName();
             var primaryKeyName = firstModel.GetPrimaykeyField();
 
-            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn);
+            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn, tran);
             var dbColumnSet = new HashSet<string>(dbColumns, StringComparer.OrdinalIgnoreCase);
             var props = GetMappableProperties(firstModel.GetType(), dbColumnSet);
 
@@ -700,7 +700,7 @@ namespace BASE.Service.Core.BL
             var primaryKeyName = model.GetPrimaykeyField();
 
             // Lấy danh sách cột từ DB
-            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn);
+            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn, tran);
             var dbColumnSet = new HashSet<string>(dbColumns, StringComparer.OrdinalIgnoreCase);
 
             // Kiểm tra trường điều kiện có tồn tại không
@@ -764,7 +764,7 @@ namespace BASE.Service.Core.BL
 
             foreach (var prop in updatePropsList)
             {
-                parameters[prop.Name] = prop.GetValue(model) ?? DBNull.Value;
+                parameters[prop.Name] = prop.GetValue(model);
             }
 
             parameters["ConditionValue"] = conditionValue;
@@ -777,7 +777,7 @@ namespace BASE.Service.Core.BL
         /// <summary>
         /// Lấy danh sách column của bảng (cache theo database + table) - Async version
         /// </summary>
-        protected virtual async Task<List<string>> GetColumnByTableNameAsync(string tableName, IDbConnection cnn)
+        protected virtual async Task<List<string>> GetColumnByTableNameAsync(string tableName, IDbConnection cnn, IDbTransaction tran = null)
         {
             var cacheKey = $"{tableName}_{_databaseID.ToString()}";
 
@@ -786,7 +786,17 @@ namespace BASE.Service.Core.BL
 
             const string sql = "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @TableName AND LENGTH(generation_expression) = 0 ORDER BY ORDINAL_POSITION";
 
-            var columns = (await cnn.QueryAsync<string>(sql, new { TableName = tableName })).ToList();
+            IDbConnection connection; 
+            if (tran != null)
+            {
+                connection = tran.Connection ?? cnn;
+            }
+            else
+            {
+                connection = cnn;
+            }
+
+            var columns = (await connection.QueryAsync<string>(sql, new { TableName = tableName }, tran)).ToList();
 
             lock (_columnLock)
             {

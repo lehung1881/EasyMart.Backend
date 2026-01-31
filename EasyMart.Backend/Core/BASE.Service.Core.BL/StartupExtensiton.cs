@@ -10,6 +10,8 @@ namespace BASE.Service.Core.BL
         {
             service.UseCoreServices();
             service.UseDatabaseServices();
+
+            service.AddTransient<CoreWebServiceCollection, CoreWebServiceCollection>();
         }
     }
 }

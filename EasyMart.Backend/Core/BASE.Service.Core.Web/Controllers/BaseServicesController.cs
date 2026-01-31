@@ -1,14 +1,8 @@
-﻿﻿﻿using BASE.Service.Core.BL;
+﻿using BASE.Service.Core.BL;
 using BASE.Service.Core.Enum;
 using BASE.Service.Core.Model;
 using BASE.Service.Core.Services;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BASE.Service.Core.Web
 {
@@ -81,6 +75,7 @@ namespace BASE.Service.Core.Web
         public BaseServicesController(CoreWebServiceCollection serviceCollection)
         {
             _serviceCollection = serviceCollection;
+            this.CurrentModelType = typeof(TModel);
         }
 
         /// <summary>
@@ -138,7 +133,7 @@ namespace BASE.Service.Core.Web
         /// <param name="model">Dữ liệu của bản ghi cần thêm</param>
         /// <returns>
         [HttpPost("save_data_async")]
-        public async Task<ServiceResponse> SaveDataAsync(BaseModel model)
+        public async Task<ServiceResponse> SaveDataAsync(TModel model)
         {
             var res = new ServiceResponse();
             try

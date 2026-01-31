@@ -148,7 +148,7 @@ namespace BASE.Service.Core.BL
 
             foreach (var prop in props)
             {
-                parameters[prop.Name] = prop.GetValue(model) ?? DBNull.Value;
+                parameters[prop.Name] = prop.GetValue(model);
             }
 
             return parameters;

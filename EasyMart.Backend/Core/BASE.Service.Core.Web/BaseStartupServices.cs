@@ -45,7 +45,7 @@ namespace BASE.Service.Core.Web
             builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
             //Add core Services
-            //builder.Services.UseCoreServices();
+            builder.Services.UseCoreServices();
 
             //Add BL Services
             //builder.Services.UseCoreBLServices();

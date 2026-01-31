@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\PlatformBase\BASE.Service.Core.BL\BASE.Service.Core.BL.csproj" />
+    <ProjectReference Include="..\..\Core\BASE.Service.Core.BL\BASE.Service.Core.BL.csproj" />
     <ProjectReference Include="..\..\DL\EasyMart.DLBase\EasyMart.DLBase.csproj" />
     <ProjectReference Include="..\..\Model\EasyMart.Model\EasyMart.Model.csproj" />
   </ItemGroup>

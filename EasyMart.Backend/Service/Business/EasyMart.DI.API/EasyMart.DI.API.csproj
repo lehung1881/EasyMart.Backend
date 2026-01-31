@@ -11,8 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\PlatformBase\BASE.Service.Core.Web\BASE.Service.Core.Web.csproj" />
     <ProjectReference Include="..\..\..\BL\EasyMart.BL\EasyMart.BL.csproj" />
+    <ProjectReference Include="..\..\..\Core\BASE.Service.Core.Web\BASE.Service.Core.Web.csproj" />
     <ProjectReference Include="..\..\..\Model\EasyMart.Model\EasyMart.Model.csproj" />
   </ItemGroup>
 

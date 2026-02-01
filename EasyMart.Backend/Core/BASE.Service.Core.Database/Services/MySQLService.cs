@@ -101,7 +101,8 @@ namespace BASE.Service.Core.Database
                 Password = "12345678@Abc",
                 SslMode = MySqlSslMode.Disabled,
                 AllowUserVariables = true,
-                MaximumPoolSize = 200
+                MaximumPoolSize = 200,
+                AllowPublicKeyRetrieval = true
             };
 
             return masterDBStringBuilder.ToString();

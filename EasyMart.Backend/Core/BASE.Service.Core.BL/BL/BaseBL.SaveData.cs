@@ -1,8 +1,6 @@
 using BASE.Service.Core.Enum;
 using BASE.Service.Core.Model;
-using BASE.Service.Core.Services;
 using Dapper;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Reflection;
 
@@ -220,12 +218,33 @@ namespace BASE.Service.Core.BL
         }
 
         /// <summary>
-        /// Lưu danh sách dữ liệu với Batch Processing (không đệ quy)
+        /// Validate danh sách dữ liệu
+        /// </summary>
+        public virtual List<ValidateResult> ValidateListData(List<BaseModel> models)
+        {
+            var validateResults = new List<ValidateResult>();
+
+            for (int i = 0; i < models.Count; i++)
+            {
+                var model = models[i];
+                var results = ValidateBeforeSaveData(model);
+                if (results != null && results.Any())
+                {
+                    validateResults.AddRange(results);
+                }
+            }
+
+            return validateResults;
+        }
+
+        /// <summary>
+        /// Lưu danh sách dữ liệu với Batch Processing (không đệ quy) - Phiên bản 2
+        /// Gộp Insert và Update thành một hàm xử lý duy nhất sử dụng INSERT INTO ... ON DUPLICATE KEY UPDATE
         /// </summary>
         /// <param name="models">Danh sách model cần lưu</param>
         /// <param name="batchSize">Số lượng bản ghi mỗi batch (mặc định 1000)</param>
         /// <returns>ServiceResponse chứa kết quả và thông tin lỗi (nếu có)</returns>
-        public virtual async Task<ServiceResponse> SaveListDataAsync(List<BaseModel> models, int batchSize = 1000)
+        public virtual async Task<ServiceResponse> SaveListDataAsyncV2(List<BaseModel> models, int batchSize = 500)
         {
             var res = new ServiceResponse();
 
@@ -299,7 +318,8 @@ namespace BASE.Service.Core.BL
         }
 
         /// <summary>
-        /// Xử lý một batch dữ liệu (Insert/Update/Delete)
+        /// Xử lý một batch dữ liệu (Upsert + Delete) - Phiên bản 2
+        /// Gộp Insert và Update thành một hàm xử lý duy nhất
         /// </summary>
         /// <param name="batch">Danh sách model trong batch</param>
         /// <param name="batchNumber">Số thứ tự batch (để log)</param>
@@ -321,38 +341,30 @@ namespace BASE.Service.Core.BL
                 tran = cnn.BeginTransaction();
 
                 // Bước 3: Nhóm models theo ModelState
-                var insertModels = batch.Where(m => m.ModelState == ModelState.Insert).ToList();
-                var updateModels = batch.Where(m => m.ModelState == ModelState.Update).ToList();
+                var upsertModels = batch.Where(m => m.ModelState == ModelState.Insert || m.ModelState == ModelState.Update).ToList();
                 var deleteModels = batch.Where(m => m.ModelState == ModelState.Delete).ToList();
 
                 var batchSuccessCount = 0;
 
-                // Bước 4: Xử lý Insert với await
-                if (insertModels.Any())
+                // Bước 4: Xử lý Upsert (Insert + Update) với await
+                if (upsertModels.Any())
                 {
-                    var insertCount = await ExecuteBatchInsert(insertModels, cnn, tran);
-                    batchSuccessCount += insertCount;
+                    var upsertCount = await ExecuteBatchUpsert(upsertModels, cnn, tran);
+                    batchSuccessCount += upsertCount;
                 }
 
-                // Bước 5: Xử lý Update với await
-                if (updateModels.Any())
-                {
-                    var updateCount = await ExecuteBatchUpdate(updateModels, cnn, tran);
-                    batchSuccessCount += updateCount;
-                }
-
-                // Bước 6: Xử lý Delete với await
+                // Bước 5: Xử lý Delete với await
                 if (deleteModels.Any())
                 {
                     var deleteCount = await ExecuteBatchDelete(deleteModels, cnn, tran);
                     batchSuccessCount += deleteCount;
                 }
 
-                // Bước 7: Commit transaction
+                // Bước 6: Commit transaction
                 tran.Commit();
                 res.OnSuccess($"Batch {batchNumber}: Lưu thành công {batchSuccessCount}/{batch.Count} bản ghi");
 
-                // Bước 8: Gọi AfterSaveData với await
+                // Bước 7: Gọi AfterSaveListData với await
                 await AfterSaveListData(batch, true);
             }
             catch (Exception ex)
@@ -361,7 +373,7 @@ namespace BASE.Service.Core.BL
                 tran?.Rollback();
                 res.OnError(ServiceResponseCode.Exception, $"Batch {batchNumber}: {ex.Message}");
 
-                // Gọi AfterSaveData với isSuccess = false
+                // Gọi AfterSaveListData với isSuccess = false
                 await AfterSaveListData(batch, false);
             }
             finally
@@ -379,29 +391,9 @@ namespace BASE.Service.Core.BL
         }
 
         /// <summary>
-        /// Validate danh sách dữ liệu
+        /// Thực thi Batch Upsert - chèn hoặc cập nhật nhiều bản ghi bằng INSERT INTO ... ON DUPLICATE KEY UPDATE
         /// </summary>
-        public virtual List<ValidateResult> ValidateListData(List<BaseModel> models)
-        {
-            var validateResults = new List<ValidateResult>();
-
-            for (int i = 0; i < models.Count; i++)
-            {
-                var model = models[i];
-                var results = ValidateBeforeSaveData(model);
-                if (results != null && results.Any())
-                {
-                    validateResults.AddRange(results);
-                }
-            }
-
-            return validateResults;
-        }
-
-        /// <summary>
-        /// Thực thi Batch Insert - chèn nhiều bản ghi trong một câu lệnh SQL
-        /// </summary>
-        private async Task<int> ExecuteBatchInsert(List<BaseModel> models, IDbConnection cnn, IDbTransaction tran)
+        private async Task<int> ExecuteBatchUpsert(List<BaseModel> models, IDbConnection cnn, IDbTransaction tran)
         {
             if (!models.Any())
                 return 0;
@@ -419,26 +411,25 @@ namespace BASE.Service.Core.BL
             var pkProp = props.FirstOrDefault(p =>
                 string.Equals(p.Name, primaryKeyName, StringComparison.OrdinalIgnoreCase));
 
-            // Gọi BeforeSaveData và sinh PK cho tất cả models
-            foreach (var model in models)
-            {
-                if (pkProp != null)
-                {
-                    EnsurePrimaryKey(model, pkProp);
-                }
-            }
-
-            // Xử lý trước khi lưu dữ liệu với await
+            // Gọi BeforeSaveListData với await
             await BeforeSaveListData(models);
 
-            // Build SQL với nhiều VALUES
+            // Build SQL với ON DUPLICATE KEY UPDATE
             var columns = string.Join(", ", props.Select(p => $"`{p.Name}`"));
             var valueRows = new List<string>();
+            
             var parameters = new DynamicParameters();
 
             for (int i = 0; i < models.Count; i++)
             {
                 var model = models[i];
+                
+                // Tự động sinh Guid PK nếu cần (cho Insert)
+                if (model.ModelState == ModelState.Insert && pkProp != null)
+                {
+                    EnsurePrimaryKey(model, pkProp);
+                }
+
                 var valueParams = new List<string>();
 
                 foreach (var prop in props)
@@ -451,80 +442,11 @@ namespace BASE.Service.Core.BL
                 valueRows.Add($"({string.Join(", ", valueParams)})");
             }
 
-            var sql = $"INSERT INTO `{tableName}` ({columns}) VALUES {string.Join(", ", valueRows)}";
+            // Build UPDATE clause cho ON DUPLICATE KEY
+            var updateClause = props.Where(p => !string.Equals(p.Name, primaryKeyName, StringComparison.OrdinalIgnoreCase))
+                .Select(p => $"`{p.Name}` = VALUES(`{p.Name}`)").ToList();
 
-            // Execute với ExecuteAsync
-            var affected = await cnn.ExecuteAsync(sql, parameters, tran);
-            return affected;
-        }
-
-        /// <summary>
-        /// Thực thi Batch Update - cập nhật nhiều bản ghi bằng CASE WHEN
-        /// </summary>
-        private async Task<int> ExecuteBatchUpdate(List<BaseModel> models, IDbConnection cnn, IDbTransaction tran)
-        {
-            if (!models.Any())
-                return 0;
-
-            var firstModel = models.First();
-            var tableName = firstModel.GetViewOrTableName();
-            var primaryKeyName = firstModel.GetPrimaykeyField();
-
-            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn, tran);
-            var dbColumnSet = new HashSet<string>(dbColumns, StringComparer.OrdinalIgnoreCase);
-            var props = GetMappableProperties(firstModel.GetType(), dbColumnSet);
-
-            var pkProp = props.FirstOrDefault(p =>
-                string.Equals(p.Name, primaryKeyName, StringComparison.OrdinalIgnoreCase));
-
-            if (pkProp == null)
-                throw new InvalidOperationException($"Primary key '{primaryKeyName}' not found");
-
-            // Gọi BeforeSaveListData với await
-            await BeforeSaveListData(models);
-
-            // Lấy danh sách cột cần update (loại bỏ PK)
-            var updateProps = GetUpdateProperties(props, firstModel.UpdateColumns, primaryKeyName).ToList();
-
-            if (!updateProps.Any())
-                return models.Count; // Không có gì để update
-
-            // Build SQL với CASE WHEN
-            var setClauses = new List<string>();
-            var parameters = new DynamicParameters();
-            var pkValues = new List<object>();
-
-            foreach (var prop in updateProps)
-            {
-                var caseParts = new List<string>();
-
-                for (int i = 0; i < models.Count; i++)
-                {
-                    var model = models[i];
-                    var pkValue = pkProp.GetValue(model);
-                    var propValue = prop.GetValue(model);
-
-                    var pkParamName = $"pk_{i}";
-                    var valueParamName = $"{prop.Name}_{i}";
-
-                    caseParts.Add($"WHEN `{primaryKeyName}` = @{pkParamName} THEN @{valueParamName}");
-
-                    parameters.Add(pkParamName, pkValue);
-                    parameters.Add(valueParamName, propValue);
-
-                    if (prop == updateProps.First())
-                    {
-                        pkValues.Add(pkValue);
-                    }
-                }
-
-                var caseStatement = $"`{prop.Name}` = CASE {string.Join(" ", caseParts)} ELSE `{prop.Name}` END";
-                setClauses.Add(caseStatement);
-            }
-
-            // Build WHERE IN clause
-            var whereInParams = string.Join(", ", pkValues.Select((_, i) => $"@pk_{i}"));
-            var sql = $"UPDATE `{tableName}` SET {string.Join(", ", setClauses)} WHERE `{primaryKeyName}` IN ({whereInParams})";
+            var sql = $"INSERT INTO `{tableName}` ({columns}) VALUES {string.Join(", ", valueRows)} ON DUPLICATE KEY UPDATE {string.Join(", ", updateClause)};";
 
             // Execute với ExecuteAsync
             var affected = await cnn.ExecuteAsync(sql, parameters, tran);

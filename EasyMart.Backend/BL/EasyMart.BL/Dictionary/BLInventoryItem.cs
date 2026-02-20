@@ -19,7 +19,7 @@ namespace EasyMart.BL.Dictionary
             var listInsert = new List<InventoryItem>();
             var random = new Random();
 
-            for (int i = 0; i < 10000; i++)
+            for (int i = 0; i < 3; i++)
             {
                 var item = new InventoryItem
                 {
@@ -28,7 +28,7 @@ namespace EasyMart.BL.Dictionary
                     UnitID = Guid.NewGuid(),
                     UnitName = GetRandomUnitName(random),
                     InventoryItemCode = $"VT{(i + 1):D4}", // VT0001, VT0002...
-                    InventoryItemName = $"Sản phẩm mẫu {i + 1}",
+                    InventoryItemName = $"Kickoff 2026",
                     InventoryItemType = random.Next(0, 3), // 0-2
                     InventoryItemCategoryIDList = $"{Guid.NewGuid()},{Guid.NewGuid()}",
                     InventoryItemCategoryCodeList = "CATEGORY1,CATEGORY2",
@@ -65,7 +65,7 @@ namespace EasyMart.BL.Dictionary
 
             var st = new Stopwatch();
             st.Start();
-            await SaveListDataAsync(listInsert.Cast<BaseModel>().ToList());
+            ServiceResponse serviceResponse = await SaveListDataAsync(listInsert);
             st.Stop();
             return new ServiceResponse()
             {

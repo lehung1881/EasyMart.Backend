@@ -238,13 +238,25 @@ namespace BASE.Service.Core.BL
         }
 
         /// <summary>
+        /// Lưu danh sách dữ liệu với Batch Processing - Generic version
+        /// </summary>
+        /// <typeparam name="T">Kiểu model kế thừa từ BaseModel</typeparam>
+        /// <param name="models">Danh sách model cần lưu</param>
+        /// <param name="batchSize">Số lượng bản ghi mỗi batch (mặc định 500)</param>
+        /// <returns>ServiceResponse chứa kết quả và thông tin lỗi (nếu có)</returns>
+        public virtual async Task<ServiceResponse> SaveListDataAsync<T>(List<T> models, int batchSize = 500) where T : BaseModel
+        {
+            return await SaveListDataAsync(models.Cast<BaseModel>().ToList(), batchSize);
+        }
+
+        /// <summary>
         /// Lưu danh sách dữ liệu với Batch Processing (không đệ quy) - Phiên bản 2
         /// Gộp Insert và Update thành một hàm xử lý duy nhất sử dụng INSERT INTO ... ON DUPLICATE KEY UPDATE
         /// </summary>
         /// <param name="models">Danh sách model cần lưu</param>
         /// <param name="batchSize">Số lượng bản ghi mỗi batch (mặc định 1000)</param>
         /// <returns>ServiceResponse chứa kết quả và thông tin lỗi (nếu có)</returns>
-        public virtual async Task<ServiceResponse> SaveListDataAsyncV2(List<BaseModel> models, int batchSize = 500)
+        public virtual async Task<ServiceResponse> SaveListDataAsync(List<BaseModel> models, int batchSize = 500)
         {
             var res = new ServiceResponse();
 

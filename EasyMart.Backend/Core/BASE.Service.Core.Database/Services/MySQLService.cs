@@ -1,8 +1,7 @@
 using System.Collections.Concurrent;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
-using System.Reflection;
 using BASE.Service.Core.Database.Model;
+using BASE.Service.Core.Enum;
 using BASE.Service.Core.Model;
 using BASE.Service.Core.Services;
 using Dapper;
@@ -45,7 +44,7 @@ namespace BASE.Service.Core.Database
             try
             {
                 masterConnection.Open();
-                const string sql = @"SELECT * FROM database_config WHERE DatabaseID = @DatabaseID AND Status = 0 LIMIT 1;";
+                const string sql = @"SELECT * FROM tenant_database WHERE DatabaseID = @DatabaseID AND Status = 0 LIMIT 1;";
                 var databaseConfig = await masterConnection.QueryFirstOrDefaultAsync<DatabaseConfig>(sql, new { DatabaseID = databaseID });
 
                 if (databaseConfig == null)
@@ -92,20 +91,7 @@ namespace BASE.Service.Core.Database
         /// <returns></returns>
         private string GetMasterConnectionString()
         {
-            var masterDBStringBuilder = new MySqlConnectionStringBuilder()
-            {
-                Port = 3306,
-                Server = "localhost",
-                Database = "master_database",
-                UserID = "lvhung",
-                Password = "12345678@Abc",
-                SslMode = MySqlSslMode.Disabled,
-                AllowUserVariables = true,
-                MaximumPoolSize = 200,
-                AllowPublicKeyRetrieval = true
-            };
-
-            return masterDBStringBuilder.ToString();
+            return GlobalConfig.AppSettings.ConnectionStrings.MasterDB;
         }
 
         /// <summary>
@@ -116,6 +102,13 @@ namespace BASE.Service.Core.Database
         /// <exception cref="Exception"></exception>
         public async Task<IDbConnection> GetDBConnectionAsync(Guid databaseID)
         {
+            // Nếu là MasterDB
+            if (databaseID == Constants.MasterDatabaseID)
+            {
+                var masterConnectionString = GetMasterConnectionString();
+                return new MySqlConnection(masterConnectionString);
+            }
+
             var dbConfig = await GetDatabaseConfig(databaseID);
 
             if (dbConfig == null)

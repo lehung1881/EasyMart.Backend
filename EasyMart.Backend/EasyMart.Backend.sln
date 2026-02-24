@@ -52,6 +52,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BASE.Service.Core.Model", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BASE.Service.Core.Web", "Core\BASE.Service.Core.Web\BASE.Service.Core.Web.csproj", "{432CC759-D587-4BDA-B310-1402188B754B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BASE.Service.Core.QueueService", "Core\BASE.Service.Core.QueueService\BASE.Service.Core.QueueService.csproj", "{A06AB833-4AC0-40B3-9B61-899630DC0045}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -106,6 +108,10 @@ Global
 		{432CC759-D587-4BDA-B310-1402188B754B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{432CC759-D587-4BDA-B310-1402188B754B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{432CC759-D587-4BDA-B310-1402188B754B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A06AB833-4AC0-40B3-9B61-899630DC0045}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A06AB833-4AC0-40B3-9B61-899630DC0045}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A06AB833-4AC0-40B3-9B61-899630DC0045}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A06AB833-4AC0-40B3-9B61-899630DC0045}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -132,6 +138,7 @@ Global
 		{BEE39EA0-E729-4527-B179-27AAC534C119} = {4A4AB30A-A796-4D51-B5B9-B6031E911FB7}
 		{D3678C7B-30C1-4278-B533-ABA9E91D321F} = {4A4AB30A-A796-4D51-B5B9-B6031E911FB7}
 		{432CC759-D587-4BDA-B310-1402188B754B} = {4A4AB30A-A796-4D51-B5B9-B6031E911FB7}
+		{A06AB833-4AC0-40B3-9B61-899630DC0045} = {4A4AB30A-A796-4D51-B5B9-B6031E911FB7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {6982B072-ADC1-4C2B-9194-484C9B4DE6E1}

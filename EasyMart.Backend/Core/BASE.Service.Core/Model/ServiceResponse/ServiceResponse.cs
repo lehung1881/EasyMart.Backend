@@ -13,6 +13,7 @@ namespace BASE.Service.Core.Model
         public bool Success { get; set; } = true;
         public ServiceResponseCode Code { get; set; } = 0;
         public string Message { get; set; }
+        public string SystemMessage { get; set; }
         public object ErrorMessage { get; set; }
         public object Data { get; set; }
         public List<ValidateResult> ValidateInfo { get; set; }
@@ -31,11 +32,12 @@ namespace BASE.Service.Core.Model
             this.Message = msg;
         }
 
-        public void OnError(ServiceResponseCode code, string msg = "")
+        public void OnError(ServiceResponseCode code, string msg = "", string systemMsg = "")
         {
             this.Success = false;
             this.Code = code;
             this.Message = msg;
+            this.SystemMessage = systemMsg;
         }
         #endregion
     }

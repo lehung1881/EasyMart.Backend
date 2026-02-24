@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using BASE.Service.Core.Model;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
@@ -19,16 +20,18 @@ namespace BASE.Service.Core.Web
         /// <returns>Trả về IServiceCollection đã được cấu hình xác thực JWT.</returns>
         public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration config)
         {
-            var appsettings = config.GetSection("AppSettings");
             services.AddControllers().AddJsonOptions(opt => opt.JsonSerializerOptions.PropertyNamingPolicy = null);
-            var key = Encoding.ASCII.GetBytes(appsettings["JWTConfig:TokenKey"]);
+
+            var jwtConfig = GlobalConfig.AppSettings.JwtSettings;
+            var key = Encoding.ASCII.GetBytes(jwtConfig.SecretKey);
+
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(option =>
             {
                 option.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidateAudience = false,
-                    ValidIssuer = appsettings["JWTConfig:ValidIssuer"],
+                    ValidIssuer = jwtConfig.Issuer,
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ValidateIssuerSigningKey = true
                 };

@@ -145,60 +145,6 @@ namespace BASE.Service.Core.BL
 
             return finalRes;
         }
-        /// <summary>
-        /// Lưu dữ liệu với cơ chế retry khi gặp lỗi tạm thời (deadlock, timeout, lỗi kết nối...)
-        /// </summary>
-        /// <param name="model">Model cần lưu</param>
-        /// <param name="maxRetry">Số lần thử tối đa (mặc định 3)</param>
-        /// <param name="delayMilliseconds">Thời gian chờ giữa các lần thử (ms, mặc định 200ms)</param>
-        /// <returns>ServiceResponse kết quả sau khi retry</returns>
-        public virtual async Task<ServiceResponse> SaveDataWithRetryAsync(
-            BaseModel model,
-            int maxRetry = 3,
-            int delayMilliseconds = 200)
-        {
-            if (maxRetry <= 0)
-            {
-                maxRetry = 1;
-            }
-
-            Exception lastException = null;
-
-            for (int attempt = 1; attempt <= maxRetry; attempt++)
-            {
-                try
-                {
-                    var res = await SaveDataAsync(model);
-
-                    if (res.Success)
-                    {
-                        return res;
-                    }
-
-                    // Nếu là lỗi dữ liệu / validation thì không retry vì retry cũng không sửa được
-                    if (res.Code == ServiceResponseCode.InvalidData ||
-                        (res.ValidateInfo != null && res.ValidateInfo.Any()))
-                    {
-                        return res;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    lastException = ex;
-                }
-
-                if (attempt < maxRetry)
-                {
-                    await Task.Delay(delayMilliseconds);
-                }
-            }
-
-            var finalRes = new ServiceResponse();
-            finalRes.OnError(ServiceResponseCode.Exception,
-                $"Lưu dữ liệu thất bại sau {maxRetry} lần thử. Lỗi cuối: {lastException?.Message}");
-
-            return finalRes;
-        }
 
         /// <summary>
         /// Thực hiện Insert / Update / Delete theo ModelState (MySQL) - Async version

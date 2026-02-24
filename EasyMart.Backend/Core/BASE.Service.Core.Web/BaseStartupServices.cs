@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using BASE.Service.Core.Model;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
@@ -78,6 +79,10 @@ namespace BASE.Service.Core.Web
             {
                 string pathConfig = GetPathConfigCommon(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "appsettings.json");
                 builder.Configuration.AddJsonFile(pathConfig, optional: false, reloadOnChange: true);
+
+                //Khởi tạo cấu hình toàn chương trình
+                var configGlobal = builder.Configuration.GetSection("AppSettings").Get<AppSettings>() ?? new AppSettings();
+                GlobalConfig.InitConfig(configGlobal);
             }
             catch (Exception ex) 
             {

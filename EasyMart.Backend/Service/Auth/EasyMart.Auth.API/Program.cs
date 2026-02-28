@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 
 //Khởi tạo ConfigureServices chung
-BaseStartupServices.ConfigureServices(builder, builder.Configuration, false);
+BaseStartupServices.ConfigureServices(builder, builder.Configuration);
 
 //Add những service riêng
 //builder.Services.AddApplicationService(builder.Configuration);

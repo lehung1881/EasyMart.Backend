@@ -11,11 +11,13 @@ namespace EasyMart.BL.Auth
     {
         private readonly JwtHelper _jwtHelper;
 
-        private DLAuth _userRepo;
-
         public BLAuth(CoreWebServiceCollection serviceCollection) : base(serviceCollection)
         {
-            _userRepo = new DLAuth(_mySQLService);
+        }
+
+        public override DLAuth CreateDL()
+        {
+            return new DLAuth(_mySQLService);
         }
 
         /// <summary>
@@ -27,7 +29,7 @@ namespace EasyMart.BL.Auth
         public async Task<LoginResponse> LoginAsync(LoginRequest request)
         {
             // ✅ Rule 1: Kiểm tra tài khoản tồn tại
-            var user = await _userRepo.GetByEmailAsync(request.Email);
+            var user = await DLObject.GetByEmailAsync(request.Email);
             if (user is null)
             {
                 // Dùng message chung để tránh lộ thông tin (User Enumeration Attack)
@@ -59,25 +61,19 @@ namespace EasyMart.BL.Auth
             await ResetFailedLoginAsync(user);
 
             // ✅ Tạo JWT Token
-            var userInfo = new UserInfo
-            {
-                UserID = user.UserID,
-                Email = user.Email,
-                FullName = user.FullName,
-                Role = user.Role,
-            };
+            var userInfo = await DLObject.GetUserInfoByIDAsync(user.UserID);
 
             var accessToken = _jwtHelper.GenerateAccessToken(userInfo);
             var refreshToken = _jwtHelper.GenerateRefreshToken();
 
             // ✅ Lưu Refresh Token vào DB
-            await _userRepo.SaveRefreshTokenAsync(user.UserID, refreshToken, DateTime.UtcNow.AddDays(7));
+            await DLObject.SaveRefreshTokenAsync(user.UserID, refreshToken, DateTime.UtcNow.AddDays(1));
 
             return new LoginResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(60),
+                ExpiresDate = DateTime.UtcNow.AddMinutes(60),
                 User = userInfo,
             };
         }
@@ -99,7 +95,7 @@ namespace EasyMart.BL.Auth
                 user.IsLocked = true;
             }
 
-            await _userRepo.UpdateAsync(user);
+            await DLObject.UpdateAsync(user);
         }
 
         /// <summary>
@@ -110,7 +106,7 @@ namespace EasyMart.BL.Auth
             if (user.FailedLoginCount > 0)
             {
                 user.FailedLoginCount = 0;
-                await _userRepo.UpdateAsync(user);
+                await DLObject.UpdateAsync(user);
             }
         }
     }

@@ -1,52 +1,46 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using BASE.Service.Core.Attribute;
+using System.ComponentModel.DataAnnotations;
 
 namespace BASE.Service.Core.Model
 {
-    /// <summary>
-    /// Đại diện cho Refresh Token được cấp phát cho User sau khi đăng nhập thành công.
-    /// Được ánh xạ tới bảng <c>RefreshTokens</c> trong database.
-    /// Refresh Token dùng để cấp phát Access Token mới khi Access Token hết hạn,
-    /// mà không cần User đăng nhập lại.
-    /// </summary>
-    public class RefreshToken
+    [ConfigTable("refresh_token", "")]
+    public class RefreshToken : BaseModel
     {
         /// <summary>
-        /// Khóa chính, định danh duy nhất của Refresh Token.
+        /// Khóa chính
         /// </summary>
-        public Guid Id { get; set; }
+        [Key]
+        public Guid RefreshTokenID { get; set; }
 
         /// <summary>
-        /// ID của User sở hữu Refresh Token này.
-        /// Khóa ngoại tham chiếu tới bảng <c>Users</c>.
+        /// ID người dùng (FK → user.UserID)
         /// </summary>
-        public Guid UserId { get; set; }
+        public Guid UserID { get; set; }
 
         /// <summary>
-        /// Chuỗi token ngẫu nhiên được sinh ra bằng <see cref="System.Security.Cryptography.RandomNumberGenerator"/>.
-        /// Phải là duy nhất trong hệ thống.
+        /// Chuỗi token ngẫu nhiên
         /// </summary>
-        public string Token { get; set; } = string.Empty;
+        public string Token { get; set; }
 
         /// <summary>
-        /// Thời điểm hết hạn của Refresh Token (UTC).
-        /// Sau thời điểm này, token không còn hợp lệ dù chưa bị thu hồi.
+        /// Thời hạn token (mặc định 7 ngày)
         /// </summary>
-        public DateTime ExpiresAt { get; set; }
+        public DateTime ExpiresDate { get; set; }
 
         /// <summary>
-        /// Trạng thái thu hồi của token.
-        /// <c>true</c>: token đã bị thu hồi (do logout, token rotation hoặc bị đánh cắp).
-        /// <c>false</c>: token vẫn còn hiệu lực.
+        /// Đã thu hồi chưa
+        /// Token Rotation: toàn bộ token cũ bị thu hồi khi đăng nhập mới
         /// </summary>
         public bool IsRevoked { get; set; } = false;
 
         /// <summary>
-        /// Thời điểm tạo Refresh Token (UTC).
+        /// Thời điểm tạo
         /// </summary>
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedDate { get; set; }
+
+        /// <summary>
+        /// Thời điểm thu hồi
+        /// </summary>
+        public DateTime? RevokedDate { get; set; }
     }
 }

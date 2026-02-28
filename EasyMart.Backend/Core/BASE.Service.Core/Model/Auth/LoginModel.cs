@@ -47,40 +47,11 @@ namespace BASE.Service.Core.Model
         /// Thời điểm hết hạn của Access Token (UTC).
         /// Client có thể dùng giá trị này để chủ động refresh token trước khi hết hạn.
         /// </summary>
-        public DateTime ExpiresAt { get; set; }
+        public DateTime ExpiresDate { get; set; }
 
         /// <summary>
         /// Thông tin cơ bản của User vừa đăng nhập.
         /// </summary>
         public UserInfo User { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Thông tin cơ bản của User được trả về sau khi đăng nhập.
-    /// Chỉ chứa các thông tin cần thiết, không bao gồm thông tin nhạy cảm như <c>PasswordHash</c>.
-    /// </summary>
-    public class UserInfo
-    {
-        /// <summary>
-        /// Định danh duy nhất của User.
-        /// Tương ứng với cột <c>UserID</c> trong bảng <c>user</c>.
-        /// </summary>
-        public Guid UserID { get; set; }
-
-        /// <summary>
-        /// Địa chỉ email của User.
-        /// </summary>
-        public string Email { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Họ và tên đầy đủ của User.
-        /// </summary>
-        public string FullName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Vai trò của User trong hệ thống (ví dụ: <c>"Admin"</c>, <c>"Manager"</c>, <c>"User"</c>).
-        /// Được đưa vào JWT Claims để phân quyền truy cập API.
-        /// </summary>
-        public string Role { get; set; } = string.Empty;
     }
 }

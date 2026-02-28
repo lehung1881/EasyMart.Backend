@@ -13,8 +13,8 @@ namespace BASE.Service.Core.Database
     {
         private const string MasterConnectionKey = "ConnectionStrings:MasterMySql";
 
-        // Cache để lưu trữ DatabaseConfig theo DatabaseID
-        private static readonly ConcurrentDictionary<Guid, DatabaseConfig> _databaseConfigCache = new ConcurrentDictionary<Guid, DatabaseConfig>();
+        // Cache để lưu trữ TenantDatabase theo DatabaseID
+        private static readonly ConcurrentDictionary<Guid, TenantDatabase> _databaseConfigCache = new ConcurrentDictionary<Guid, TenantDatabase>();
 
         //private readonly IConfiguration _configuration;
 
@@ -30,7 +30,7 @@ namespace BASE.Service.Core.Database
         /// </summary>
         /// <param name="databaseID">ID của customer database</param>
         /// <returns>Connection string tương ứng</returns>
-        public async Task<DatabaseConfig> GetDatabaseConfig(Guid databaseID)
+        public async Task<TenantDatabase> GetDatabaseConfig(Guid databaseID)
         {
             // Kiểm tra cache trước
             if (_databaseConfigCache.TryGetValue(databaseID, out var cachedConfig))
@@ -45,7 +45,7 @@ namespace BASE.Service.Core.Database
             {
                 masterConnection.Open();
                 const string sql = @"SELECT * FROM tenant_database WHERE DatabaseID = @DatabaseID AND Status = 0 LIMIT 1;";
-                var databaseConfig = await masterConnection.QueryFirstOrDefaultAsync<DatabaseConfig>(sql, new { DatabaseID = databaseID });
+                var databaseConfig = await masterConnection.QueryFirstOrDefaultAsync<TenantDatabase>(sql, new { DatabaseID = databaseID });
 
                 if (databaseConfig == null)
                 {

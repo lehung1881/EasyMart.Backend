@@ -20,6 +20,43 @@ namespace EasyMart.DL.Auth
         }
 
         /// <summary>
+        /// Lấy thông tin <see cref="UserInfo"/> theo <paramref name="userID"/>
+        /// bằng cách join bảng <c>user</c>, <c>user_tenant</c> và <c>tenant</c>.
+        /// </summary>
+        /// <param name="userID">Định danh duy nhất của người dùng cần truy vấn.</param>
+        /// <returns>
+        /// <see cref="UserInfo"/> nếu tìm thấy; <c>null</c> nếu không tồn tại hoặc đã bị xóa.
+        /// </returns>
+        public async Task<UserInfo> GetUserInfoByIDAsync(Guid userID)
+        {
+            var sql = @"
+                SELECT 
+                    u.UserID,
+                    ut.DatabaseID,
+                    u.Email,
+                    u.FullName,
+                    u.AvatarUrl,
+                    u.PhoneNumber,
+                    t.TenantID,
+                    t.TenantCode,
+                    t.TenantName
+                FROM user u
+                LEFT JOIN user_tenant ut ON u.UserID = ut.UserID
+                LEFT JOIN tenant t ON ut.TenantID = t.TenantID
+                WHERE u.UserID = @UserID
+                  AND u.IsDeleted = 0
+                LIMIT 1";
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "@UserID", userID }
+            };
+
+            var result = await _databaseService.QueryUsingCommandText<UserInfo>(Constants.MasterDatabaseID, sql, parameters);
+            return result?.FirstOrDefault();
+        }
+
+        /// <summary>
         /// Lấy thông tin User theo địa chỉ email (không phân biệt hoa thường).
         /// </summary>
         /// <param name="email">Địa chỉ email của User cần tìm.</param>
@@ -74,35 +111,35 @@ namespace EasyMart.DL.Auth
         /// </summary>
         /// <param name="userID">ID của User sở hữu Refresh Token.</param>
         /// <param name="token">Chuỗi Refresh Token cần lưu.</param>
-        /// <param name="expiresAt">Thời điểm hết hạn của Refresh Token.</param>
+        /// <param name="expiresDate">Thời điểm hết hạn của Refresh Token.</param>
         /// <returns><c>true</c> nếu lưu thành công; <c>false</c> nếu thất bại.</returns>
-        public async Task<bool> SaveRefreshTokenAsync(Guid userID, string token, DateTime expiresAt)
+        public async Task<bool> SaveRefreshTokenAsync(Guid userID, string token, DateTime expiresDate)
         {
             // Thu hồi tất cả Refresh Token cũ còn hiệu lực của User
             var revokeOldSql = @"
                 UPDATE refresh_token 
                 SET IsRevoked = 1,
-                    RevokedAt = @RevokedAt
+                    RevokedDate = @RevokedDate
                 WHERE UserID = @UserID AND IsRevoked = 0";
 
             await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, revokeOldSql, new Dictionary<string, object>
             {
-                { "@UserID",    userID },
-                { "@RevokedAt", DateTime.UtcNow },
+                { "@UserID", userID },
+                { "@RevokedDate", DateTime.UtcNow },
             });
 
             // Chèn Refresh Token mới vào database
             var insertSql = @"
-                INSERT INTO refresh_token (RefreshTokenID, UserID, Token, ExpiresAt, IsRevoked, CreatedAt)
-                VALUES (@RefreshTokenID, @UserID, @Token, @ExpiresAt, 0, @CreatedAt)";
+                INSERT INTO refresh_token (RefreshTokenID, UserID, Token, ExpiresDate, IsRevoked, CreatedDate)
+                VALUES (@RefreshTokenID, @UserID, @Token, @ExpiresDate, 0, @CreatedDate)";
 
             var parameters = new Dictionary<string, object>
             {
                 { "@RefreshTokenID", Guid.NewGuid() },
-                { "@UserID",         userID },
-                { "@Token",          token },
-                { "@ExpiresAt",      expiresAt },
-                { "@CreatedAt",      DateTime.UtcNow },
+                { "@UserID", userID },
+                { "@Token", token },
+                { "@ExpiresDate", expiresDate },
+                { "@CreatedDate", DateTime.UtcNow },
             };
 
             return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, insertSql, parameters);
@@ -144,13 +181,13 @@ namespace EasyMart.DL.Auth
             var sql = @"
                 UPDATE refresh_token 
                 SET IsRevoked = 1,
-                    RevokedAt = @RevokedAt
+                    RevokedDate = @RevokedDate
                 WHERE Token = @Token";
 
             var parameters = new Dictionary<string, object>
             {
                 { "@Token",     token },
-                { "@RevokedAt", DateTime.UtcNow },
+                { "@RevokedDate", DateTime.UtcNow },
             };
 
             return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, sql, parameters);

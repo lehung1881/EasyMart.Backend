@@ -80,7 +80,7 @@ namespace BASE.Service.Core.Web
                 string pathConfig = GetPathConfigCommon(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "appsettings.json");
                 builder.Configuration.AddJsonFile(pathConfig, optional: false, reloadOnChange: true);
 
-                //Khởi tạo cấu hình toàn chương trình
+                // Khởi tạo cấu hình toàn Services
                 var configGlobal = builder.Configuration.GetSection("AppSettings").Get<AppSettings>() ?? new AppSettings();
                 GlobalConfig.InitConfig(configGlobal);
             }

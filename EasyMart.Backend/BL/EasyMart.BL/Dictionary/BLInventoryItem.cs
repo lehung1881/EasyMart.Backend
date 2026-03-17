@@ -13,6 +13,10 @@ namespace EasyMart.BL.Dictionary
         {
         }
 
+        public override DLInventoryItem CreateDL()
+        {
+            return new DLInventoryItem(_mySQLService);
+        }
 
         public async Task<ServiceResponse> InsertBatch()
         {
@@ -92,7 +96,5 @@ namespace EasyMart.BL.Dictionary
             };
             return sources[random.Next(sources.Length)];
         }
-
-
     }
 }

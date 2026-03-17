@@ -15,42 +15,42 @@ namespace BASE.Service.Core.Model
         /// <summary>
         /// ID khách hàng (không FK - chấp nhận dư thừa)
         /// </summary>
-        public Guid? TenantID { get; set; }
+        public Guid TenantID { get; set; }
 
         /// <summary>
         /// Mã ứng dụng
         /// </summary>
-        public string? AppCode { get; set; }
+        public string AppCode { get; set; }
 
         /// <summary>
         /// Địa chỉ host MySQL
         /// </summary>
-        public string? Server { get; set; }
+        public string Server { get; set; }
 
         /// <summary>
         /// Cổng kết nối
         /// </summary>
-        public int? Port { get; set; }
+        public int Port { get; set; }
 
         /// <summary>
         /// Tên database
         /// </summary>
-        public string? Database { get; set; }
+        public string Database { get; set; }
 
         /// <summary>
         /// Tên đăng nhập DB
         /// </summary>
-        public string? UserID { get; set; }
+        public string UserID { get; set; }
 
         /// <summary>
         /// Mật khẩu DB - được mã hóa AES trước khi lưu
         /// </summary>
-        public string? Password { get; set; }
+        public string Password { get; set; }
 
         /// <summary>
         /// Phiên bản DB hiện tại
         /// </summary>
-        public string? VersionDB { get; set; }
+        public string VersionDB { get; set; }
 
         /// <summary>
         /// Môi trường (g2, staging, prod...)

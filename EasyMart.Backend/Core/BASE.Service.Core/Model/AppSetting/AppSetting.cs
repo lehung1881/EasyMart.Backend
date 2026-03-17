@@ -25,6 +25,11 @@ namespace BASE.Service.Core.Model
         /// Cấu hình Cloudinary (dịch vụ lưu trữ & quản lý hình ảnh)
         /// </summary>
         public ClouldinaryConfig ClouldinaryConfig { get; set; }
+
+        /// <summary>
+        /// Định db mẫu khi tạo mới dữ liệu
+        /// </summary>
+        public string DatabaseNameTemplate { get; set; } = "easymart_{0}_{1}";
     }
 
     /// <summary>
@@ -36,6 +41,11 @@ namespace BASE.Service.Core.Model
         /// Chuỗi kết nối đến database MasterDB
         /// </summary>
         public string MasterDB { get; set; }
+
+        /// <summary>
+        /// Chuỗi kết nối đến database tạo mới dữ liệu
+        /// </summary>
+        public string TemplateDB { get; set; }
     }
 
     /// <summary>

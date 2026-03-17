@@ -30,8 +30,49 @@ namespace EasyMart.Auth.API.Controllers
             var res = new ServiceResponse();
             try
             {
-                var response = await BLObject.LoginAsync(request);
-                res.OnSuccess(response);
+                res = await BLObject.LoginAsync(request);
+            }
+            catch (Exception ex)
+            {
+                res.OnError(ServiceResponseCode.Exception, ex.Message, ex.Message);
+            }
+            return res;
+        }
+        /// <summary>
+        /// Làm mới Access Token bằng Refresh Token hợp lệ.
+        /// Áp dụng Token Rotation: Refresh Token cũ bị thu hồi và một token mới được cấp phát.
+        /// </summary>
+        /// <param name="request">Request chứa Refresh Token hiện tại.</param>
+        /// <returns>Access Token mới, Refresh Token mới và thông tin User.</returns>
+        [HttpPost("refresh_token")]
+        [AllowAnonymous]
+        public async Task<ServiceResponse> RefreshTokenAsync([FromBody] RefreshTokenRequest request)
+        {
+            var res = new ServiceResponse();
+            try
+            {
+                res = await BLObject.RefreshTokenAsync(request);
+            }
+            catch (Exception ex)
+            {
+                res.OnError(ServiceResponseCode.Exception, ex.Message, ex.Message);
+            }
+            return res;
+        }
+
+        /// <summary>
+        /// Đăng ký tài khoản người dùng mới.
+        /// </summary>
+        /// <param name="request">Thông tin đăng ký.</param>
+        /// <returns>Thông tin User vừa được tạo.</returns>
+        [HttpPost("register")]
+        [AllowAnonymous]
+        public async Task<ServiceResponse> RegisterAsync([FromBody] RegisterRequest request)
+        {
+            var res = new ServiceResponse();
+            try
+            {
+                return await BLObject.RegisterAsync(request);
             }
             catch (Exception ex)
             {

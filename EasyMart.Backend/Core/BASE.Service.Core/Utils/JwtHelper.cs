@@ -1,4 +1,5 @@
-﻿using BASE.Service.Core.Model;
+﻿using BASE.Service.Core.Enum;
+using BASE.Service.Core.Model;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -33,12 +34,14 @@ namespace BASE.Service.Core.Utils
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserID.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.Name, user.FullName),
-                //new Claim(ClaimTypes.Role, user.Role),
+                new Claim(JwtClaimKeys.UserID, user.UserID.ToString()),
+                new Claim(JwtClaimKeys.Email, user.Email),
+                new Claim(JwtClaimKeys.TokenID, Guid.NewGuid().ToString()),
+                new Claim(JwtClaimKeys.FullName, user.FullName),
+                new Claim(JwtClaimKeys.DatabaseID, user.DatabaseID.ToString()),
+                new Claim(JwtClaimKeys.TenantID, user.TenantID.ToString()),
             };
+
 
             var token = new JwtSecurityToken(
                 issuer: issuer,

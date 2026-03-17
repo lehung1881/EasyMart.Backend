@@ -122,7 +122,7 @@ namespace BASE.Service.Core.BL
                     }
 
                     // Nếu là lỗi dữ liệu / validation thì không retry vì retry cũng không sửa được
-                    if (res.Code == ServiceResponseCode.InvalidData ||
+                    if (res.ResponseCode == ServiceResponseCode.InvalidData ||
                         (res.ValidateInfo != null && res.ValidateInfo.Any()))
                     {
                         return res;

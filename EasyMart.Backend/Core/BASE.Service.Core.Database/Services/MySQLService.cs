@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Data;
-using BASE.Service.Core.Database.Model;
 using BASE.Service.Core.Enum;
 using BASE.Service.Core.Model;
 using BASE.Service.Core.Services;
@@ -316,6 +315,30 @@ namespace BASE.Service.Core.Database
                     cnn.Close();
                     cnn.Dispose();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Thực thi lệnh SQL trong một transaction có sẵn.
+        /// Không đóng connection sau khi thực thi — việc commit/rollback/dispose
+        /// do caller quản lý.
+        /// </summary>
+        public async Task<bool> ExecuteUsingCommandText(IDbConnection cnn, IDbTransaction transaction, string commandText, Dictionary<string, object> param)
+        {
+            try
+            {
+                var dynamicParams = ConvertToDynamicParameters(param);
+                var rowsAffected = await cnn.ExecuteAsync(
+                    sql: commandText,
+                    param: dynamicParams,
+                    transaction: transaction,
+                    commandType: CommandType.Text
+                );
+                return rowsAffected > 0;
+            }
+            catch
+            {
+                throw;
             }
         }
 

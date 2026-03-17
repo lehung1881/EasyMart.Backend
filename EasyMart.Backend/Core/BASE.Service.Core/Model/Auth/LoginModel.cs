@@ -52,6 +52,17 @@ namespace BASE.Service.Core.Model
         /// <summary>
         /// Thông tin cơ bản của User vừa đăng nhập.
         /// </summary>
-        public UserInfo User { get; set; } = new();
+        public UserInfo UserInfo { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Request model cho API làm mới Access Token.
+    /// </summary>
+    public class RefreshTokenRequest
+    {
+        /// <summary>
+        /// Refresh Token hiện tại của User.
+        /// </summary>
+        public string RefreshToken { get; set; } = string.Empty;
     }
 }

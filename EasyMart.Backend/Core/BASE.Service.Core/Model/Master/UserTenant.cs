@@ -2,7 +2,7 @@
 
 namespace BASE.Service.Core.Model
 {
-    [ConfigTable("user_tenant", "")]
+    [ConfigTable("tenant_user", "")]
     public class UserTenant : BaseModel
     {
         /// <summary>

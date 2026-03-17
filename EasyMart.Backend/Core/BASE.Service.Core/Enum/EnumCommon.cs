@@ -8,18 +8,42 @@ namespace BASE.Service.Core.Enum
 {
     public enum ServiceResponseCode : int
     {
+        /// <summary>
+        /// Thành công.
+        /// </summary>
         Success = 0,
 
+        /// <summary>
+        /// Dữ liệu đầu vào không hợp lệ.
+        /// </summary>
         InvalidData = 1,
 
+        /// <summary>
+        /// Không tìm thấy dữ liệu.
+        /// </summary>
         NotFound = 2,
 
+        /// <summary>
+        /// Lỗi ngoại lệ không xác định.
+        /// </summary>
         Exception = 3,
 
+        /// <summary>
+        /// Mã đã tồn tại trong hệ thống.
+        /// </summary>
         ExistsCode = 4,
 
-        Duplicate = 5
+        /// <summary>
+        /// Dữ liệu bị trùng lặp.
+        /// </summary>
+        Duplicate = 5,
+
+        /// <summary>
+        /// Token đã hết hạn hoặc không còn hiệu lực.
+        /// </summary>
+        TokenExpired = 6
     }
+
 
     public enum ModelState : int
     {

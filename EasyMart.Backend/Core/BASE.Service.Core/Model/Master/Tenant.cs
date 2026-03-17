@@ -50,7 +50,7 @@ namespace BASE.Service.Core.Model
         /// <summary>
         /// Thời điểm cập nhật
         /// </summary>
-        public DateTime? UpdatedAt { get; set; }
+        public DateTime? ModifiedDate { get; set; }
 
         /// <summary>
         /// Soft delete

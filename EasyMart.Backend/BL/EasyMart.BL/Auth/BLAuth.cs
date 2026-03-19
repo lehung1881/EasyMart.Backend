@@ -76,12 +76,11 @@ namespace EasyMart.BL.Auth
             var refreshTokenExpires = GlobalConfig.AppSettings.JwtSettings.RefreshTokenExpires;
             await DLObject.SaveRefreshTokenAsync(user.UserID, refreshToken, DateTime.Now.AddSeconds(refreshTokenExpires));
 
-            var accessTokenExpires = GlobalConfig.AppSettings.JwtSettings.AccessTokenExpires;
             res.OnSuccess(new LoginResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                ExpiresDate = DateTime.UtcNow.AddSeconds(accessTokenExpires),
+                ExpiresDate = DateTime.Now.AddSeconds(GlobalConfig.AppSettings.JwtSettings.AccessTokenExpires),
                 UserInfo = userInfo,
             });
 
@@ -128,6 +127,7 @@ namespace EasyMart.BL.Auth
                 AccessToken = newAccessToken,
                 RefreshToken = newRefreshToken,
                 UserInfo = userInfo,
+                ExpiresDate = DateTime.Now.AddSeconds(GlobalConfig.AppSettings.JwtSettings.AccessTokenExpires),
             });
 
             return res;
@@ -196,8 +196,8 @@ namespace EasyMart.BL.Auth
                 ContactEmail = request.Email.Trim().ToLower(),
                 ContactPhone = request.PhoneNumber?.Trim(),
                 IsActive = true,
-                ExpiredDate = DateTime.UtcNow.AddDays(7),
-                CreatedDate = DateTime.UtcNow,
+                ExpiredDate = DateTime.Now.AddDays(7),
+                CreatedDate = DateTime.Now,
                 IsDeleted = false,
             };
 
@@ -288,7 +288,7 @@ namespace EasyMart.BL.Auth
             var templateConnStr = GlobalConfig.AppSettings.ConnectionStrings.TemplateDB;
             var masterConnStr = GlobalConfig.AppSettings.ConnectionStrings.MasterDB;
 
-            var newDatabaseName = $"easymart_{tenantCode}_{DateTime.UtcNow.Year}";
+            var newDatabaseName = $"easymart_{tenantCode}_{DateTime.Now.Year}";
             var tempDir = Path.Combine(AppContext.BaseDirectory, "temp");
             var backupFile = Path.Combine(tempDir, $"{newDatabaseName}_{Guid.NewGuid():N}.sql");
             var dbCreated = false;
@@ -348,7 +348,7 @@ namespace EasyMart.BL.Auth
                     Password = builder.Password,
                     VersionDB = "0.0.0.1",
                     Status = 0,
-                    CreatedDate = DateTime.UtcNow,
+                    CreatedDate = DateTime.Now,
                 };
 
                 var saveResult = await DLObject.SaveTenantDatabaseAsync(tenantDatabase);

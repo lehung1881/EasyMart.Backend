@@ -213,7 +213,7 @@ namespace EasyMart.DL.Auth
             var parameters = new Dictionary<string, object>
             {
                 { "@Token", token },
-                { "@Now",   DateTime.UtcNow },
+                { "@Now",   DateTime.Now },
             };
 
             var result = await _databaseService.QueryUsingCommandText<RefreshToken>(Constants.MasterDatabaseID, sql, parameters);
@@ -241,7 +241,7 @@ namespace EasyMart.DL.Auth
             await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, revokeOldSql, new Dictionary<string, object>
             {
                 { "@UserID",      userID },
-                { "@RevokedDate", DateTime.UtcNow },
+                { "@RevokedDate", DateTime.Now },
             });
 
             // Chèn Refresh Token mới vào database
@@ -255,7 +255,7 @@ namespace EasyMart.DL.Auth
                 { "@UserID",         userID },
                 { "@Token",          token },
                 { "@ExpiresDate",    expiresDate },
-                { "@CreatedDate",    DateTime.UtcNow },
+                { "@CreatedDate",    DateTime.Now },
             };
 
             return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, insertSql, parameters);
@@ -278,7 +278,7 @@ namespace EasyMart.DL.Auth
             var parameters = new Dictionary<string, object>
             {
                 { "@Token",       token },
-                { "@RevokedDate", DateTime.UtcNow },
+                { "@RevokedDate", DateTime.Now },
             };
 
             return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, sql, parameters);
@@ -344,7 +344,7 @@ namespace EasyMart.DL.Auth
                 { "@TenantUserID", Guid.NewGuid() },
                 { "@TenantID",     tenantID },
                 { "@UserID",       userID },
-                { "@AssignedDate", DateTime.UtcNow },
+                { "@AssignedDate", DateTime.Now },
             };
 
             return await _databaseService.ExecuteUsingCommandText(cnn, tran, sql, parameters);

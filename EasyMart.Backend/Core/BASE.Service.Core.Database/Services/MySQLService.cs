@@ -10,8 +10,6 @@ namespace BASE.Service.Core.Database
 {
     public class MySQLService : IMySQLService
     {
-        private const string MasterConnectionKey = "ConnectionStrings:MasterMySql";
-
         // Cache để lưu trữ TenantDatabase theo DatabaseID
         private static readonly ConcurrentDictionary<Guid, TenantDatabase> _databaseConfigCache = new ConcurrentDictionary<Guid, TenantDatabase>();
 

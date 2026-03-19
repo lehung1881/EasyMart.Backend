@@ -3,6 +3,8 @@ using BASE.Service.Core.Web;
 using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 
+Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
+
 //Khởi tạo ConfigureServices chung
 BaseStartupServices.ConfigureServices(builder, builder.Configuration);
 

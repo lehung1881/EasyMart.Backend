@@ -11,11 +11,8 @@ namespace BASE.Service.Core.Utils
 {
     public class JwtHelper
     {
-        private readonly IConfiguration _config;
-
-        public JwtHelper(IConfiguration config)
+        public JwtHelper()
         {
-            _config = config;
         }
 
         /// <summary>
@@ -23,13 +20,9 @@ namespace BASE.Service.Core.Utils
         /// </summary>
         public string GenerateAccessToken(UserInfo user)
         {
-            var jwtSettings = _config.GetSection("JwtSettings");
-            var secretKey = jwtSettings["SecretKey"]!;
-            var issuer = jwtSettings["Issuer"]!;
-            var audience = jwtSettings["Audience"]!;
-            var expiresIn = int.Parse(jwtSettings["ExpiresInMinutes"]!);
+            var jwtConfig = GlobalConfig.AppSettings.JwtSettings;
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.SecretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
@@ -42,12 +35,11 @@ namespace BASE.Service.Core.Utils
                 new Claim(JwtClaimKeys.TenantID, user.TenantID.ToString()),
             };
 
-
             var token = new JwtSecurityToken(
-                issuer: issuer,
-                audience: audience,
+                issuer: jwtConfig.Issuer,
+                audience: jwtConfig.Audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(expiresIn),
+                expires: DateTime.Now.AddSeconds(jwtConfig.AccessTokenExpires),
                 signingCredentials: creds
             );
 

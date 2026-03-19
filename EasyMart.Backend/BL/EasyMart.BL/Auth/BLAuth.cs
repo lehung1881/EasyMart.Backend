@@ -5,7 +5,6 @@ using BASE.Service.Core.Utils;
 using EasyMart.BLBase;
 using EasyMart.DL.Auth;
 using MySql.Data.MySqlClient;
-using static MySql.Data.MySqlClient.MySqlBackup;
 
 namespace EasyMart.BL.Auth
 {
@@ -15,6 +14,7 @@ namespace EasyMart.BL.Auth
 
         public BLAuth(CoreWebServiceCollection serviceCollection) : base(serviceCollection)
         {
+            _jwtHelper = new JwtHelper();
         }
 
         public override DLAuth CreateDL() => new DLAuth(_mySQLService);
@@ -73,13 +73,15 @@ namespace EasyMart.BL.Auth
             var refreshToken = _jwtHelper.GenerateRefreshToken();
 
             // Bước 7: Lưu Refresh Token vào DB
-            await DLObject.SaveRefreshTokenAsync(user.UserID, refreshToken, DateTime.UtcNow.AddDays(7));
+            var refreshTokenExpires = GlobalConfig.AppSettings.JwtSettings.RefreshTokenExpires;
+            await DLObject.SaveRefreshTokenAsync(user.UserID, refreshToken, DateTime.Now.AddSeconds(refreshTokenExpires));
 
+            var accessTokenExpires = GlobalConfig.AppSettings.JwtSettings.AccessTokenExpires;
             res.OnSuccess(new LoginResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                ExpiresDate = DateTime.UtcNow.AddMinutes(60),
+                ExpiresDate = DateTime.UtcNow.AddSeconds(accessTokenExpires),
                 UserInfo = userInfo,
             });
 
@@ -118,13 +120,13 @@ namespace EasyMart.BL.Auth
             var newRefreshToken = _jwtHelper.GenerateRefreshToken();
 
             // Bước 4: Thu hồi token cũ, lưu token mới
-            await DLObject.SaveRefreshTokenAsync(existingToken.UserID, newRefreshToken, DateTime.UtcNow.AddDays(7));
+            var refreshTokenExpires = GlobalConfig.AppSettings.JwtSettings.RefreshTokenExpires;
+            await DLObject.SaveRefreshTokenAsync(existingToken.UserID, newRefreshToken, DateTime.Now.AddSeconds(refreshTokenExpires));
 
             res.OnSuccess(new LoginResponse
             {
                 AccessToken = newAccessToken,
                 RefreshToken = newRefreshToken,
-                ExpiresDate = DateTime.UtcNow.AddMinutes(60),
                 UserInfo = userInfo,
             });
 
@@ -451,6 +453,30 @@ namespace EasyMart.BL.Auth
         {
             return Guid.NewGuid().ToString("N")[..8].ToLower();
         }
+
+        /// <summary>
+        /// Lấy thông tin người dùng hiện tại theo UserID.
+        /// Dùng cho endpoint /me để kiểm tra phiên đăng nhập còn hợp lệ không.
+        /// </summary>
+        /// <param name="userID">ID của người dùng cần lấy thông tin.</param>
+        /// <returns>
+        /// <see cref="ServiceResponse"/> với <c>Data</c> là <see cref="UserInfo"/> nếu thành công.
+        /// </returns>
+        public async Task<ServiceResponse> GetUserInfoAsync(Guid userID)
+        {
+            var res = new ServiceResponse();
+
+            var userInfo = await DLObject.GetUserInfoByIDAsync(userID);
+            if (userInfo is null)
+            {
+                res.OnError(ServiceResponseCode.NotFound, "Không tìm thấy thông tin người dùng");
+                return res;
+            }
+
+            res.OnSuccess(userInfo);
+            return res;
+        }
+
         #endregion
     }
 }

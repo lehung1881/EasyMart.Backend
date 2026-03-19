@@ -30,6 +30,11 @@ namespace BASE.Service.Core.Model
         /// Định db mẫu khi tạo mới dữ liệu
         /// </summary>
         public string DatabaseNameTemplate { get; set; } = "easymart_{0}_{1}";
+
+        /// <summary>
+        /// AllowedOrigins
+        /// </summary>
+        public string[] AllowedOrigins { get; set; }
     }
 
     /// <summary>
@@ -69,9 +74,14 @@ namespace BASE.Service.Core.Model
         public string Audience { get; set; }
 
         /// <summary>
-        /// Thời gian hết hạn của token (đơn vị: phút)
+        /// Thời gian hết hạn của Access Token (đơn vị: giây)
         /// </summary>
-        public int ExpiresInMinutes { get; set; }
+        public long AccessTokenExpires { get; set; }
+
+        /// <summary>
+        /// Thời gian hết hạn của Refresh Token (đơn vị: giây)
+        /// </summary>
+        public long RefreshTokenExpires { get; set; }
     }
 
     /// <summary>

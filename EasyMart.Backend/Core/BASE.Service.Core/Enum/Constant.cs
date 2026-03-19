@@ -11,7 +11,7 @@ namespace BASE.Service.Core.Enum
         /// <summary>
         /// ID của Master Database, sử dụng <see cref="Guid.Empty"/> làm định danh mặc định.
         /// </summary>
-        public static readonly Guid MasterDatabaseID = Guid.Empty;
+        public static readonly Guid MasterDatabaseID = Guid.Parse("00000000-0000-0000-0000-000000000001");
     }
 
     public static class JwtClaimKeys

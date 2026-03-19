@@ -92,6 +92,61 @@ namespace BASE.Service.Core.BL
         }
 
         /// <summary>
+        /// Lưu dữ liệu với cơ chế retry khi gặp lỗi tạm thời (deadlock, timeout, lỗi kết nối...)
+        /// </summary>
+        /// <param name="model">Model cần lưu</param>
+        /// <param name="maxRetry">Số lần thử tối đa (mặc định 3)</param>
+        /// <param name="delayMilliseconds">Thời gian chờ giữa các lần thử (ms, mặc định 200ms)</param>
+        /// <returns>ServiceResponse kết quả sau khi retry</returns>
+        public virtual async Task<ServiceResponse> SaveDataWithRetryAsync(
+            BaseModel model,
+            int maxRetry = 3,
+            int delayMilliseconds = 200)
+        {
+            if (maxRetry <= 0)
+            {
+                maxRetry = 1;
+            }
+
+            Exception lastException = null;
+
+            for (int attempt = 1; attempt <= maxRetry; attempt++)
+            {
+                try
+                {
+                    var res = await SaveDataAsync(model);
+
+                    if (res.Success)
+                    {
+                        return res;
+                    }
+
+                    // Nếu là lỗi dữ liệu / validation thì không retry vì retry cũng không sửa được
+                    if (res.ResponseCode == ServiceResponseCode.InvalidData ||
+                        (res.ValidateInfo != null && res.ValidateInfo.Any()))
+                    {
+                        return res;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                }
+
+                if (attempt < maxRetry)
+                {
+                    await Task.Delay(delayMilliseconds);
+                }
+            }
+
+            var finalRes = new ServiceResponse();
+            finalRes.OnError(ServiceResponseCode.Exception,
+                $"Lưu dữ liệu thất bại sau {maxRetry} lần thử. Lỗi cuối: {lastException?.Message}");
+
+            return finalRes;
+        }
+
+        /// <summary>
         /// Thực hiện Insert / Update / Delete theo ModelState (MySQL) - Async version
         /// </summary>
         protected virtual async Task<bool> DoSaveData(BaseModel model, IDbConnection cnn, IDbTransaction tran)
@@ -612,6 +667,95 @@ namespace BASE.Service.Core.BL
         }
 
         /// <summary>
+        /// Xóa dữ liệu dựa trên một trường cụ thể (không nhất thiết là Primary Key) - Async version
+        /// </summary>
+        /// <param name="model">Model đại diện cho bảng cần xóa</param>
+        /// <param name="conditionField">Tên trường điều kiện</param>
+        /// <param name="conditionValue">Giá trị điều kiện</param>
+        /// <returns>ServiceResponse chứa kết quả và số bản ghi bị ảnh hưởng</returns>
+        public virtual async Task<ServiceResponse> DeleteByFieldAsync(
+            BaseModel model,
+            string conditionField,
+            object conditionValue)
+        {
+            var res = new ServiceResponse();
+            IDbConnection cnn = null;
+            IDbTransaction tran = null;
+
+            try
+            {
+                // Bước 1: Validate đầu vào
+                if (model == null)
+                {
+                    res.OnError(ServiceResponseCode.InvalidData, "Model không được null");
+                    return res;
+                }
+
+                if (string.IsNullOrWhiteSpace(conditionField))
+                {
+                    res.OnError(ServiceResponseCode.InvalidData, "Tên trường điều kiện không được rỗng");
+                    return res;
+                }
+
+                if (conditionValue == null)
+                {
+                    res.OnError(ServiceResponseCode.InvalidData, "Giá trị điều kiện không được null");
+                    return res;
+                }
+
+                // Bước 2: Mở connection và transaction
+                cnn = await GetConnectionAsync();
+                if (cnn.State != ConnectionState.Open)
+                    cnn.Open();
+
+                tran = cnn.BeginTransaction();
+
+                // Bước 3: Thực hiện delete
+                var affectedRows = await DoDeleteByFieldAsync(
+                    model,
+                    conditionField,
+                    conditionValue,
+                    cnn,
+                    tran);
+
+                // Bước 4: Kiểm tra kết quả
+                if (affectedRows == 0)
+                {
+                    tran.Rollback();
+                    res.OnError(ServiceResponseCode.NotFound,
+                        $"Không tìm thấy bản ghi nào với điều kiện {conditionField} = {conditionValue}");
+                    return res;
+                }
+
+                // Bước 5: Commit transaction
+                tran.Commit();
+                res.OnSuccess($"Xóa thành công {affectedRows} bản ghi");
+                res.Data = affectedRows;
+            }
+            catch (InvalidOperationException ex)
+            {
+                tran?.Rollback();
+                res.OnError(ServiceResponseCode.InvalidData, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                tran?.Rollback();
+                res.OnError(ServiceResponseCode.Exception, $"Lỗi khi xóa dữ liệu: {ex.Message}");
+            }
+            finally
+            {
+                if (cnn != null)
+                {
+                    if (cnn.State != ConnectionState.Closed)
+                        cnn.Close();
+                    cnn.Dispose();
+                }
+            }
+
+            return res;
+        }
+
+        /// <summary>
         /// Thực thi câu lệnh UPDATE dựa trên trường tùy chỉnh - Async version
         /// </summary>
         /// <param name="model">Model chứa dữ liệu</param>
@@ -702,6 +846,49 @@ namespace BASE.Service.Core.BL
             }
 
             parameters["ConditionValue"] = conditionValue;
+
+            // Execute async
+            var affected = await cnn.ExecuteAsync(sql, parameters, tran);
+            return affected;
+        }
+
+        /// <summary>
+        /// Thực thi câu lệnh DELETE dựa trên trường tùy chỉnh - Async version
+        /// </summary>
+        /// <param name="model">Model chứa thông tin bảng</param>
+        /// <param name="conditionField">Tên trường điều kiện</param>
+        /// <param name="conditionValue">Giá trị điều kiện</param>
+        /// <param name="cnn">Database connection</param>
+        /// <param name="tran">Transaction</param>
+        /// <returns>Số bản ghi bị ảnh hưởng</returns>
+        private async Task<int> DoDeleteByFieldAsync(
+            BaseModel model,
+            string conditionField,
+            object conditionValue,
+            IDbConnection cnn,
+            IDbTransaction tran)
+        {
+            // Lấy thông tin bảng
+            var tableName = model.GetViewOrTableName();
+
+            // Lấy danh sách cột từ DB
+            var dbColumns = await GetColumnByTableNameAsync(tableName, cnn, tran);
+            var dbColumnSet = new HashSet<string>(dbColumns, StringComparer.OrdinalIgnoreCase);
+
+            // Kiểm tra trường điều kiện có tồn tại không
+            if (!dbColumnSet.Contains(conditionField))
+            {
+                throw new InvalidOperationException($"Trường '{conditionField}' không tồn tại trong bảng '{tableName}'");
+            }
+
+            // Build SQL
+            var sql = $"DELETE FROM `{tableName}` WHERE `{conditionField}` = @ConditionValue";
+
+            // Build parameters
+            var parameters = new Dictionary<string, object>(1, StringComparer.OrdinalIgnoreCase)
+            {
+                ["ConditionValue"] = conditionValue
+            };
 
             // Execute async
             var affected = await cnn.ExecuteAsync(sql, parameters, tran);

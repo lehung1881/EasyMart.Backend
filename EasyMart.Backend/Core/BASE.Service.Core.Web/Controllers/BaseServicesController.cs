@@ -133,7 +133,7 @@ namespace BASE.Service.Core.Web
         /// <param name="model">Dữ liệu của bản ghi cần thêm</param>
         /// <returns>
         [HttpPost("save_data_async")]
-        public async Task<ServiceResponse> SaveDataAsync(TModel model)
+        public async Task<ServiceResponse> SaveDataAsync(BaseModel model)
         {
             var res = new ServiceResponse();
             try

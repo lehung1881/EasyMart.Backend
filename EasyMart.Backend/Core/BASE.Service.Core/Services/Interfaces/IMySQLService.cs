@@ -33,6 +33,12 @@ namespace BASE.Service.Core.Services
         Task<bool> ExecuteUsingCommandText(IDbConnection cnn, string commandText, Dictionary<string, object> param);
 
         /// <summary>
+        /// Thực thi lệnh SQL trong một transaction có sẵn.
+        /// Không đóng connection sau khi thực thi.
+        /// </summary>
+        Task<bool> ExecuteUsingCommandText(IDbConnection cnn, IDbTransaction transaction, string commandText, Dictionary<string, object> param);
+
+        /// <summary>
         /// Thực hiện truy vấn nhiều tập kết quả từ database sử dụng command text
         /// </summary>
         Task<List<List<object>>> QueryMultipleUsingCommandText(Guid databaseID, string commandText, List<Type> types, Dictionary<string, object> param);

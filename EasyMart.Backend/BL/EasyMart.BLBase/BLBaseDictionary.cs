@@ -3,7 +3,7 @@ using EasyMart.DLBase;
 
 namespace EasyMart.BLBase
 {
-    public class BLBaseDictionary<TDL> : BLBaseEasyMart<TDL> where TDL : DLBaseEasyMart
+    public abstract class BLBaseDictionary<TDL> : BLBaseEasyMart<TDL> where TDL : DLBaseEasyMart
     {
         public BLBaseDictionary(CoreWebServiceCollection serviceCollection) : base(serviceCollection)
         {

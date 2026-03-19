@@ -42,5 +42,57 @@ namespace BASE.Service.Core.Services
             }
             return Guid.Empty;
         }
+
+        /// <summary>
+        /// Lấy DatabaseID từ header "X-DatabaseID" trong HTTP request hiện tại.
+        /// </summary>
+        /// <returns>
+        /// Trả về Guid đại diện cho ID database của tenant nếu tồn tại,
+        /// ngược lại trả về Guid.Empty.
+        /// </returns>
+        public Guid GetDatabaseID()
+        {
+            string databaseID = _httpContext.HttpContext?.Request?.Headers["X-DatabaseID"];
+            if (!string.IsNullOrEmpty(databaseID))
+            {
+                return Guid.Parse(databaseID);
+            }
+            return Guid.Empty;
+        }
+
+        /// <summary>
+        /// Lấy TenantID từ header "X-TenantID" trong HTTP request hiện tại.
+        /// </summary>
+        /// <returns>
+        /// Trả về Guid đại diện cho ID tenant nếu tồn tại,
+        /// ngược lại trả về Guid.Empty.
+        /// </returns>
+        public Guid GetTenantID()
+        {
+            string tenantID = _httpContext.HttpContext?.Request?.Headers["X-TenantID"];
+            if (!string.IsNullOrEmpty(tenantID))
+            {
+                return Guid.Parse(tenantID);
+            }
+            return Guid.Empty;
+        }
+
+        /// <summary>
+        /// Lấy FullName từ header "X-FullName" trong HTTP request hiện tại.
+        /// Giá trị được decode từ UTF-8 do phía client encode bằng encodeURIComponent.
+        /// </summary>
+        /// <returns>
+        /// Trả về họ tên người dùng nếu tồn tại,
+        /// ngược lại trả về chuỗi rỗng.
+        /// </returns>
+        public string GetFullName()
+        {
+            string fullName = _httpContext.HttpContext?.Request?.Headers["X-FullName"];
+            if (!string.IsNullOrEmpty(fullName))
+            {
+                return Uri.UnescapeDataString(fullName);
+            }
+            return string.Empty;
+        }
     }
 }

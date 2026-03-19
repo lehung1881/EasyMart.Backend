@@ -1,13 +1,12 @@
-﻿using BASE.Service.Core.Web;
+﻿using BASE.Service.Core.Model;
+using BASE.Service.Core.Web;
+using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
+
+Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
 
 //Khởi tạo ConfigureServices chung
 BaseStartupServices.ConfigureServices(builder, builder.Configuration);
-
-//Khởi tạo cấu hình toàn chương trình
-//var configGlobal = new GlobalConfig();
-//new ConfigureFromConfigurationOptions<GlobalConfig>(builder.Configuration).Configure(configGlobal);
-//ConfigUtils.InitGlobalConfig(configGlobal);
 
 //Add những service riêng
 //builder.Services.AddApplicationService(builder.Configuration);

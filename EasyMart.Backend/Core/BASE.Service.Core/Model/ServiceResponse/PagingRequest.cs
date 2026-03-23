@@ -7,82 +7,138 @@ using System.Threading.Tasks;
 
 namespace BASE.Service.Core.Model
 {
+    /// <summary>
+    /// Model đại diện cho yêu cầu phân trang, lọc và sắp xếp dữ liệu.
+    /// </summary>
     public class PagingRequest
     {
         /// <summary>
-        /// Lấy ở trang bao nhiêu
+        /// Danh sách điều kiện sắp xếp dữ liệu.
         /// </summary>
-        public int pageIndex { get; set; } = 1;
-        /// <summary>
-        /// Số bản ghi lấy tối đa
-        /// </summary>
-        public int pageSize { get; set; } = 20;
-        /// <summary>
-        /// Danh sách điều kiện lọc
-        /// </summary>
-        public List<FilterCondition> filters { get; set; }
-        /// <summary>
-        /// Danh sách điều kiện sắp xếp
-        /// </summary>
-        public string sort { get; set; }
-        /// <summary>
-        /// Có lấy từ view hay không
-        /// </summary>
-        public int view { get; set; }
-    }
+        public List<SortCondition> Sort { get; set; }
 
-    public class CustomFilter
-    {
         /// <summary>
-        /// Điều kiện lọc(bằng, trống, lớn hơn, bé hơn...)
+        /// Danh sách điều kiện lọc dữ liệu.
         /// </summary>
-        public string condition { get; set; }
+        public List<FilterCondition> Filter { get; set; }
+
         /// <summary>
-        /// Giá trị lọc
+        /// Danh sách các cột cần lấy dữ liệu (phân tách bởi dấu phẩy hoặc định dạng tùy chỉnh).
         /// </summary>
-        public object value { get; set; }
+        public string Columns { get; set; }
+
         /// <summary>
-        /// Trường cần lọc
+        /// Chỉ số trang hiện tại (bắt đầu từ 1).
         /// </summary>
-        public string property { get; set; }
-    }
-    public class Sort
-    {
+        public int PageIndex { get; set; }
+
         /// <summary>
-        /// Trường cần sắp xếp
+        /// Số lượng bản ghi trên mỗi trang.
         /// </summary>
-        public string property { get; set; }
+        public int PageSize { get; set; }
+
         /// <summary>
-        /// Giá trị sắp xếp
+        /// Tên view hoặc tên bảng dữ liệu cần truy vấn.
         /// </summary>
-        public bool desc { get; set; }
+        public string ViewOrTableName { get; set; }
+
+        /// <summary>
+        /// Giá trị đang selected trong Combobox
+        /// </summary>
+        public SelectedValue SelectedValue { get; set; }
     }
 
     /// <summary>
-    /// Đại diện cho một điều kiện lọc trong hệ thống.
+    /// Model đại diện cho một điều kiện sắp xếp.
+    /// </summary>
+    public class SortCondition
+    {
+        /// <summary>
+        /// Tên thuộc tính (cột) cần sắp xếp.
+        /// </summary>
+        public string Property { get; set; }
+
+        /// <summary>
+        /// Sắp xếp giảm dần nếu true, tăng dần nếu false.
+        /// </summary>
+        public bool Desc { get; set; }
+
+        /// <summary>
+        /// Kiểu dữ liệu của thuộc tính.
+        /// </summary>
+        public DataType DataType { get; set; }
+
+        /// <summary>
+        /// Toán hạng xác định ngữ cảnh sắp xếp.
+        /// </summary>
+        public int Operand { get; set; }
+    }
+
+    /// <summary>
+    /// Model đại diện cho một điều kiện lọc dữ liệu.
     /// </summary>
     public class FilterCondition
     {
         /// <summary>
-        /// Điều kiện lọc kiểu Enum, xác định loại điều kiện sẽ được áp dụng (ví dụ: Equals, NotEquals).
+        /// Tên thuộc tính (cột) cần lọc.
         /// </summary>
-        public EnumFilterCondition condition { get; set; }
+        public string Property { get; set; }
 
         /// <summary>
-        /// Giá trị mà điều kiện lọc sẽ so sánh với thuộc tính.
-        /// Kiểu dữ liệu có thể thay đổi, vì vậy nó được khai báo là object.
+        /// Giá trị dùng để so sánh khi lọc (có thể là string, số, DateTime,...).
         /// </summary>
-        public string value { get; set; }
+        public object Value { get; set; }
 
         /// <summary>
-        /// Tên của thuộc tính mà điều kiện lọc sẽ được áp dụng.
+        /// Toán tử so sánh.
         /// </summary>
-        public string property { get; set; }
+        public FilterOperator Operator { get; set; }
 
         /// <summary>
-        /// Kiểu dữ liệu của thuộc tính được chỉ định.
-        /// Giúp xác định loại giá trị nào được sử dụng cho điều kiện lọc (ví dụ: "string", "int", "DateTime").
+        /// Toán hạng xác định ngữ cảnh lọc.
         /// </summary>
-        public EnumDataType data_type { get; set; }
+        public int Operand { get; set; }
+
+        /// <summary>
+        /// Kiểu dữ liệu của thuộc tính.
+        /// </summary>
+        public DataType DataType { get; set; }
+    }
+
+    /// <summary>
+    /// Selected value dùng cho combobox
+    /// </summary>
+    public class SelectedValue
+    {
+        /// <summary>
+        /// Tên thuộc tính (cột) cần lọc.
+        /// </summary>
+        public string Property { get; set; }
+
+        /// <summary>
+        /// Giá trị dùng để so sánh khi lọc (có thể là string, số, DateTime,...).
+        /// </summary>
+        public object Value { get; set; }
+    }
+
+    /// <summary>
+    /// Kết quả build SQL từ PagingRequest.
+    /// </summary>
+    public class PagingSQLBuilder
+    {
+        /// <summary>
+        /// Câu SQL đã build (bao gồm WHERE, ORDER BY, LIMIT/OFFSET).
+        /// </summary>
+        public string PagingQuery { get; set; }
+
+        /// <summary>
+        /// Câu SQL đếm tổng số bản ghi (dùng cho phân trang).
+        /// </summary>
+        public string PagingQueryCount { get; set; }
+
+        /// <summary>
+        /// Dictionary chứa các tham số truyền vào SQL.
+        /// </summary>
+        public Dictionary<string, object> Parameters { get; set; }
     }
 }

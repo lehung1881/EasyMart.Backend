@@ -92,5 +92,13 @@ namespace BASE.Service.Core.Services
         /// Lấy theo ID
         /// </summary>
         Task<T> GetDataByID<T>(Guid databaseID, string id) where T : BaseModel;
+
+        /// <summary>
+        /// Lấy dữ liệu phân trang từ PagingRequest.
+        /// Build SQL, thực thi truy vấn và trả về PagingResponse.
+        /// </summary>
+        /// <param name="request">Yêu cầu phân trang, lọc, sắp xếp.</param>
+        /// <returns>PagingResponse chứa dữ liệu trang và tổng số bản ghi.</returns>
+        Task<PagingResponse> GetDataPaging(Guid databaseID, PagingRequest request);
     }
 }

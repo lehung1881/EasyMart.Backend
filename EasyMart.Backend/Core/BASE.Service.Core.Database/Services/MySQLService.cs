@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Data;
+using System.Text;
 using BASE.Service.Core.Enum;
 using BASE.Service.Core.Model;
 using BASE.Service.Core.Services;
@@ -13,11 +14,8 @@ namespace BASE.Service.Core.Database
         // Cache để lưu trữ TenantDatabase theo DatabaseID
         private static readonly ConcurrentDictionary<Guid, TenantDatabase> _databaseConfigCache = new ConcurrentDictionary<Guid, TenantDatabase>();
 
-        //private readonly IConfiguration _configuration;
-
         public MySQLService()
         {
-            //_configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
         #region Methods connect
@@ -340,6 +338,276 @@ namespace BASE.Service.Core.Database
             }
         }
 
+        #endregion
+
+        #region Paging data
+        /// <summary>
+        /// Lấy dữ liệu phân trang từ PagingRequest.
+        /// Build SQL, thực thi truy vấn và trả về PagingResponse.
+        /// </summary>
+        /// <param name="databaseID">ID của database cần truy vấn.</param>
+        /// <param name="request">Yêu cầu phân trang, lọc, sắp xếp.</param>
+        /// <returns>PagingResponse chứa dữ liệu trang và tổng số bản ghi.</returns>
+        public async Task<PagingResponse> GetDataPaging(Guid databaseID, PagingRequest request)
+        {
+            // Build câu SQL và parameters
+            var sqlResult = GenerateSqlPaging(request);
+
+            // Ghép 2 câu SQL thành 1 command text để query multiple
+            var commandText = $"{sqlResult.PagingQuery}; {sqlResult.PagingQueryCount}";
+
+            // Định nghĩa kiểu trả về cho từng result set
+            var types = new List<Type>
+            {
+                typeof(object),  // Result set 1: dữ liệu trang
+                typeof(int)      // Result set 2: tổng số bản ghi
+            };
+
+            // Thực thi query multiple
+            var results = await QueryMultipleUsingCommandText(databaseID, commandText, types, sqlResult.Parameters);
+
+            // Lấy kết quả từ 2 result set
+            var pageData = results[0];
+            var total = results[1]?.FirstOrDefault() != null ? Convert.ToInt32(results[1].FirstOrDefault()) : 0;
+
+            return new PagingResponse(pageData, total);
+        }
+
+        public PagingSQLBuilder GenerateSqlPaging(PagingRequest request)
+        {
+            var parameters = new Dictionary<string, object>();
+            var whereClause = BuildWhereClause(request.Filter, parameters);
+            var orderByClause = BuildOrderByClause(request.Sort);
+            var columns = string.IsNullOrWhiteSpace(request.Columns) ? "*" : request.Columns;
+            var tableName = request.ViewOrTableName;
+
+            var hasSelectedValue = request.SelectedValue != null
+                && !string.IsNullOrWhiteSpace(request.SelectedValue.Property)
+                && request.SelectedValue.Value != null;
+
+            // Build WHERE clause 
+            string finalWhereClause;
+            if (hasSelectedValue)
+            {
+                var selectedParamName = "@selectedValue";
+                var selectedProperty = $"`{request.SelectedValue.Property}`";
+                parameters[selectedParamName] = request.SelectedValue.Value.ToString();
+
+                var selectedCondition = $"{selectedProperty} = {selectedParamName}";
+
+                if (!string.IsNullOrEmpty(whereClause))
+                {
+                    finalWhereClause = $"({whereClause}) OR ({selectedCondition})";
+                }
+                else
+                {
+                    finalWhereClause = string.Empty;
+                }
+            }
+            else
+            {
+                finalWhereClause = whereClause;
+            }
+
+            // Build ORDER BY
+            string finalOrderBy;
+            if (hasSelectedValue)
+            {
+                var selectedParamName = "@selectedValue";
+                var selectedProperty = $"`{request.SelectedValue.Property}`";
+
+                var caseWhenExpr = $"CASE WHEN {selectedProperty} = {selectedParamName} THEN 0 ELSE 1 END ASC";
+
+                finalOrderBy = !string.IsNullOrEmpty(orderByClause)
+                    ? $"{caseWhenExpr}, {orderByClause}"
+                    : caseWhenExpr;
+            }
+            else
+            {
+                finalOrderBy = orderByClause;
+            }
+
+            // Build SQL
+            var sqlBuilder = new StringBuilder();
+            sqlBuilder.Append($"SELECT {columns} FROM `{tableName}`");
+
+            if (!string.IsNullOrEmpty(finalWhereClause))
+            {
+                sqlBuilder.Append($" WHERE {finalWhereClause}");
+            }
+
+            if (!string.IsNullOrEmpty(finalOrderBy))
+            {
+                sqlBuilder.Append($" ORDER BY {finalOrderBy}");
+            }
+
+            var offset = (request.PageIndex - 1) * request.PageSize;
+            sqlBuilder.Append($" LIMIT @PageSize OFFSET @Offset");
+            parameters["@Offset"] = offset;
+            parameters["@PageSize"] = request.PageSize;
+
+            // Build Count SQL
+            var countBuilder = new StringBuilder();
+            countBuilder.Append($"SELECT COUNT(*) FROM `{tableName}`");
+
+            if (!string.IsNullOrEmpty(finalWhereClause))
+            {
+                countBuilder.Append($" WHERE {finalWhereClause}");
+            }
+
+            return new PagingSQLBuilder
+            {
+                PagingQuery = sqlBuilder.ToString(),
+                PagingQueryCount = countBuilder.ToString(),
+                Parameters = parameters
+            };
+        }
+
+
+        /// <summary>
+        /// Build mệnh đề WHERE từ danh sách FilterCondition.
+        /// </summary>
+        private string BuildWhereClause(List<FilterCondition> filters, Dictionary<string, object> parameters)
+        {
+            if (filters == null || filters.Count == 0)
+                return string.Empty;
+
+            var conditions = new List<string>();
+
+            for (int i = 0; i < filters.Count; i++)
+            {
+                var filter = filters[i];
+                var paramName = $"@p{i}";
+                var condition = BuildSingleCondition(filter, paramName, parameters, i);
+
+                if (!string.IsNullOrEmpty(condition))
+                {
+                    conditions.Add(condition);
+                }
+            }
+
+            return conditions.Count > 0 ? string.Join(" AND ", conditions) : string.Empty;
+        }
+
+        /// <summary>
+        /// Build một điều kiện lọc đơn lẻ (MySQL syntax).
+        /// </summary>
+        private string BuildSingleCondition(FilterCondition filter, string paramName, Dictionary<string, object> parameters, int index)
+        {
+            var property = $"`{filter.Property}`";
+
+            switch (filter.Operator)
+            {
+                case FilterOperator.Equal:
+                    parameters[paramName] = filter.Value;
+                    return $"{property} = {paramName}";
+
+                case FilterOperator.NotEqual:
+                    parameters[paramName] = filter.Value;
+                    return $"{property} <> {paramName}";
+
+                case FilterOperator.Contains:
+                    parameters[paramName] = $"%{filter.Value}%";
+                    return $"{property} LIKE {paramName}";
+
+                case FilterOperator.NotContains:
+                    parameters[paramName] = $"%{filter.Value}%";
+                    return $"{property} NOT LIKE {paramName}";
+
+                case FilterOperator.StartsWith:
+                    parameters[paramName] = $"{filter.Value}%";
+                    return $"{property} LIKE {paramName}";
+
+                case FilterOperator.EndsWith:
+                    parameters[paramName] = $"%{filter.Value}";
+                    return $"{property} LIKE {paramName}";
+
+                case FilterOperator.IsNullOrEmpty:
+                    return $"({property} IS NULL OR {property} = '')";
+
+                case FilterOperator.IsNotNullOrEmpty:
+                    return $"({property} IS NOT NULL AND {property} <> '')";
+
+                case FilterOperator.LessThan:
+                    parameters[paramName] = filter.Value;
+                    return $"{property} < {paramName}";
+
+                case FilterOperator.LessThanOrEqual:
+                    parameters[paramName] = filter.Value;
+                    return $"{property} <= {paramName}";
+
+                case FilterOperator.GreaterThan:
+                    parameters[paramName] = filter.Value;
+                    return $"{property} > {paramName}";
+
+                case FilterOperator.GreaterThanOrEqual:
+                    parameters[paramName] = filter.Value;
+                    return $"{property} >= {paramName}";
+
+                case FilterOperator.In:
+                    if (filter.Value is IEnumerable<object> inValues)
+                    {
+                        var inParams = new List<string>();
+                        int j = 0;
+                        foreach (var val in inValues)
+                        {
+                            var inParamName = $"@p{index}_in{j}";
+                            parameters[inParamName] = val;
+                            inParams.Add(inParamName);
+                            j++;
+                        }
+                        return $"{property} IN ({string.Join(", ", inParams)})";
+                    }
+                    parameters[paramName] = filter.Value;
+                    return $"{property} IN ({paramName})";
+
+                case FilterOperator.NotIn:
+                    if (filter.Value is IEnumerable<object> notInValues)
+                    {
+                        var notInParams = new List<string>();
+                        int k = 0;
+                        foreach (var val in notInValues)
+                        {
+                            var notInParamName = $"@p{index}_nin{k}";
+                            parameters[notInParamName] = val;
+                            notInParams.Add(notInParamName);
+                            k++;
+                        }
+                        return $"{property} NOT IN ({string.Join(", ", notInParams)})";
+                    }
+                    parameters[paramName] = filter.Value;
+                    return $"{property} NOT IN ({paramName})";
+
+                case FilterOperator.Between:
+                    if (filter.Value is IList<object> betweenValues && betweenValues.Count == 2)
+                    {
+                        var fromParam = $"@p{index}_from";
+                        var toParam = $"@p{index}_to";
+                        parameters[fromParam] = betweenValues[0];
+                        parameters[toParam] = betweenValues[1];
+                        return $"{property} BETWEEN {fromParam} AND {toParam}";
+                    }
+                    return string.Empty;
+
+                default:
+                    return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Build mệnh đề ORDER BY từ danh sách SortCondition (MySQL syntax).
+        /// </summary>
+        private string BuildOrderByClause(List<SortCondition> sorts)
+        {
+            if (sorts == null || sorts.Count == 0)
+                return string.Empty;
+
+            var orderParts = sorts.Select(s =>
+                $"`{s.Property}` {(s.Desc ? "DESC" : "ASC")}"
+            );
+
+            return string.Join(", ", orderParts);
+        }
         #endregion
 
         #region Methods query store procedure

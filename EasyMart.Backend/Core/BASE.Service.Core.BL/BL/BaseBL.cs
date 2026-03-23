@@ -158,20 +158,10 @@ namespace BASE.Service.Core.BL
         /// <summary>
         /// Lấy danh sách bản ghi có phân trang.
         /// </summary>
-        /// <param name="pageIndex">Số trang hiện tại (bắt đầu từ 0).</param>
-        /// <param name="pageSize">Số bản ghi mỗi trang.</param>
-        /// <param name="filters">Danh sách điều kiện lọc.</param>
-        /// <param name="viewName">Tên view hoặc null nếu dùng table mặc định.</param>
-        /// <param name="sort">Chuỗi sắp xếp, ví dụ: "CreatedDate DESC".</param>
         /// <returns><see cref="PagingResponse"/> chứa danh sách bản ghi và thông tin phân trang.</returns>
-        public virtual PagingResponse GetPaging(
-            int pageIndex,
-            int pageSize,
-            List<FilterCondition> filters,
-            int? viewName,
-            string sort = "")
+        public async Task<PagingResponse> GetDataPaging(PagingRequest pagingRequest)
         {
-            return new PagingResponse();
+            return await _mySQLService.GetDataPaging(DatabaseID, pagingRequest);
         }
 
         #endregion

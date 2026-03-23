@@ -153,12 +153,12 @@ namespace BASE.Service.Core.Web
         /// <param name="request">Object chứa các tham số phân trang và lọc</param>
         /// <returns>
         [HttpPost("paging_filter")]
-        public ServiceResponse PagingFilter(PagingRequest request)
+        public async Task<ServiceResponse> PagingFilter(PagingRequest request)
         {
             var res = new ServiceResponse();
             try
             {
-                PagingResponse data = BLObject.GetPaging(request.pageIndex, request.pageSize, request.filters, request.view, request.sort);
+                PagingResponse data = await BLObject.GetDataPaging(request);
                 if (data == null)
                 {
                     res.OnError(ServiceResponseCode.NotFound);

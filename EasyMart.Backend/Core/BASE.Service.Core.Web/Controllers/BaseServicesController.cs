@@ -2,6 +2,7 @@
 using BASE.Service.Core.Enum;
 using BASE.Service.Core.Model;
 using BASE.Service.Core.Services;
+using BASE.Service.Core.Utils;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BASE.Service.Core.Web
@@ -108,13 +109,13 @@ namespace BASE.Service.Core.Web
         /// </summary>
         /// <param name="id">ID của bản ghi cần lấy</param>
         /// <returns>
-        [HttpGet("{id}")]
+        [HttpGet("get_by_id/{id}")]
         public async Task<ServiceResponse> GetByID(string id)
         {
             var res = new ServiceResponse();
             try
             {
-                var data = await BLObject.GetDataByID(this.CurrentModelType.GetType(), id);
+                var data = await BLObject.GetDataByID(this.CurrentModelType, id);
                 if (data != null)
                 {
                     res.OnSuccess(data);
@@ -133,12 +134,36 @@ namespace BASE.Service.Core.Web
         /// <param name="model">Dữ liệu của bản ghi cần thêm</param>
         /// <returns>
         [HttpPost("save_data_async")]
-        public async Task<ServiceResponse> SaveDataAsync(BaseModel model)
+        public async Task<ServiceResponse> SaveDataAsync(object model)
         {
             var res = new ServiceResponse();
             try
             {
-                res = await BLObject.SaveDataAsync(model);
+                var saveModel = (BaseModel)ConvertUtil.DeserializeObject(model.ToString(), this.CurrentModelType);
+                if(model != null)
+                {
+                    res = await BLObject.SaveDataAsync(saveModel);
+                }
+            }
+            catch (Exception ex)
+            {
+                res.OnError(ServiceResponseCode.Exception, ex.Message);
+            }
+            return res;
+        }
+
+        /// <summary>
+        /// API thêm/sửa/xóa nhiều bản ghi
+        /// </summary>
+        /// <param name="model">Dữ liệu của bản ghi cần thêm</param>
+        /// <returns>
+        [HttpPost("save_list_data_async")]
+        public async Task<ServiceResponse> SaveListDataAsync(List<BaseModel> models)
+        {
+            var res = new ServiceResponse();
+            try
+            {
+                res = await BLObject.SaveListDataAsync(models);
             }
             catch (Exception ex)
             {

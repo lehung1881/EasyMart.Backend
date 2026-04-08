@@ -86,7 +86,7 @@ namespace BASE.Service.Core.Services
         /// <summary>
         /// Lấy theo ID
         /// </summary>
-        Task<BaseModel> GetDataByID(Guid databaseID, Type modelType, string id);
+        Task<object> GetDataByID(Guid databaseID, Type modelType, string id);
 
         /// <summary>
         /// Lấy theo ID

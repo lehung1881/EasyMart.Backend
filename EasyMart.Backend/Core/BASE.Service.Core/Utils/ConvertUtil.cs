@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using BASE.Service.Core.Enum;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -21,6 +22,105 @@ namespace BASE.Service.Core.Utils
             return JsonConvert.DeserializeObject<T>(jsonString);
         }
 
+        /// <summary>
+        /// Deserializes a JSON string to an object of a specified Type (runtime)
+        /// </summary>
+        /// <param name="jsonString">The JSON string to deserialize</param>
+        /// <param name="type">The Type to deserialize to</param>
+        /// <returns>Deserialized object, or null if deserialization fails</returns>
+        public static object DeserializeObject(string jsonString, Type type)
+        {
+            if (string.IsNullOrEmpty(jsonString)) return null;
+
+            return JsonConvert.DeserializeObject(jsonString, type);
+        }
+
+
+        #region DataType Conversion
+
+        /// <summary>
+        /// Chuyển đổi giá trị sang kiểu dữ liệu tương ứng dựa trên <see cref="DataType"/>.
+        /// </summary>
+        /// <param name="dataType">Kiểu dữ liệu đích cần chuyển đổi.</param>
+        /// <param name="value">Giá trị dạng object cần chuyển đổi.</param>
+        /// <returns>
+        /// Giá trị đã được chuyển đổi sang đúng kiểu dữ liệu dạng <see cref="object"/>,
+        /// hoặc <c>null</c> nếu <paramref name="value"/> là null hoặc <see cref="DBNull"/>.
+        /// </returns>
+        /// <exception cref="FormatException">
+        /// Ném ra khi giá trị không thể chuyển đổi sang kiểu dữ liệu đích.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// Ném ra khi <paramref name="dataType"/> không được hỗ trợ.
+        /// </exception>
+        public static object? ConvertValueByDataType(DataType dataType, object? value)
+        {
+            if (value is null || value == DBNull.Value)
+                return null;
+
+            return dataType switch
+            {
+                DataType.String => value switch
+                {
+                    string s => s,
+                    _ => Convert.ToString(value, CultureInfo.InvariantCulture)
+                },
+
+                DataType.Number => value switch
+                {
+                    decimal or int or long or float or double or short or byte
+                                                                     => Convert.ToDecimal(value, CultureInfo.InvariantCulture),
+                    string s when decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var n)
+                                                                     => n,
+                    string s => throw new FormatException($"Giá trị '{s}' không hợp lệ cho kiểu Number."),
+                    _ => Convert.ToDecimal(value, CultureInfo.InvariantCulture)
+                },
+
+                DataType.DateTime => value switch
+                {
+                    DateTime dt => dt,
+                    DateTimeOffset dto => dto.DateTime,
+                    string s when DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt)
+                                                                                                        => dt,
+                    string s => throw new FormatException($"Giá trị '{s}' không hợp lệ cho kiểu DateTime."),
+                    _ => Convert.ToDateTime(value, CultureInfo.InvariantCulture)
+                },
+
+                DataType.Boolean => value switch
+                {
+                    bool b => b,
+                    string s when bool.TryParse(s, out var b) => b,
+                    string { } s when s == "1" => true,
+                    string { } s when s == "0" => false,
+                    string s => throw new FormatException($"Giá trị '{s}' không hợp lệ cho kiểu Boolean."),
+                    _ => Convert.ToBoolean(value)
+                },
+
+                DataType.Guid => value switch
+                {
+                    Guid g => g,
+                    string s when Guid.TryParse(s, out var g) => g,
+                    string s => throw new FormatException($"Giá trị '{s}' không hợp lệ cho kiểu Guid."),
+                    _ => throw new FormatException($"Không thể chuyển đổi '{value.GetType().Name}' sang kiểu Guid.")
+                },
+
+                DataType.Date => value switch
+                {
+                    DateOnly d => d,
+                    DateTime dt => DateOnly.FromDateTime(dt),
+                    DateTimeOffset dto => DateOnly.FromDateTime(dto.DateTime),
+                    string s when DateOnly.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) => d,
+                    string s when DateOnly.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) => d,
+                    string s => throw new FormatException($"Giá trị '{s}' không đúng định dạng 'yyyy-MM-dd' cho kiểu Date."),
+                    _ => throw new FormatException($"Không thể chuyển đổi '{value.GetType().Name}' sang kiểu Date.")
+                },
+
+                _ => throw new NotSupportedException($"DataType '{dataType}' chưa được hỗ trợ.")
+            };
+        }
+
+        #endregion
+
         #region Safe Conversion Methods
 
         /// <summary>
@@ -33,7 +133,10 @@ namespace BASE.Service.Core.Utils
             if (value == null || value == DBNull.Value)
                 return 0;
 
-            if (int.TryParse(value.ToString(), out int result))
+            if (value is int i)
+                return i;
+
+            if (int.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), out int result))
                 return result;
 
             return 0;
@@ -49,7 +152,10 @@ namespace BASE.Service.Core.Utils
             if (value == null || value == DBNull.Value)
                 return 0;
 
-            if (decimal.TryParse(value.ToString(), out decimal result))
+            if (value is decimal d)
+                return d;
+
+            if (decimal.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), NumberStyles.Any, CultureInfo.InvariantCulture, out decimal result))
                 return result;
 
             return 0;
@@ -65,14 +171,21 @@ namespace BASE.Service.Core.Utils
             if (value == null || value == DBNull.Value)
                 return DateTime.MinValue;
 
-            if (DateTime.TryParse(value.ToString(), out DateTime result))
+            if (value is DateTime dt)
+                return dt;
+
+            if (value is DateTimeOffset dto)
+                return dto.DateTime;
+
+            if (DateTime.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result))
                 return result;
 
             return DateTime.MinValue;
         }
 
         /// <summary>
-        /// Safely converts a value to boolean, returns false if conversion fails
+        /// Safely converts a value to boolean, returns false if conversion fails.
+        /// Supports "1"/"0" in addition to standard true/false strings.
         /// </summary>
         /// <param name="value">The value to convert</param>
         /// <returns>Converted boolean value or false if conversion fails</returns>
@@ -81,8 +194,16 @@ namespace BASE.Service.Core.Utils
             if (value == null || value == DBNull.Value)
                 return false;
 
-            if (bool.TryParse(value.ToString(), out bool result))
+            if (value is bool b)
+                return b;
+
+            var str = Convert.ToString(value, CultureInfo.InvariantCulture);
+
+            if (bool.TryParse(str, out bool result))
                 return result;
+
+            if (str == "1") return true;
+            if (str == "0") return false;
 
             return false;
         }
@@ -97,7 +218,10 @@ namespace BASE.Service.Core.Utils
             if (value == null || value == DBNull.Value)
                 return Guid.Empty;
 
-            if (Guid.TryParse(value.ToString(), out Guid result))
+            if (value is Guid g)
+                return g;
+
+            if (Guid.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), out Guid result))
                 return result;
 
             return Guid.Empty;
@@ -113,7 +237,10 @@ namespace BASE.Service.Core.Utils
             if (value == null || value == DBNull.Value)
                 return 0;
 
-            if (long.TryParse(value.ToString(), out long result))
+            if (value is long l)
+                return l;
+
+            if (long.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), out long result))
                 return result;
 
             return 0;
@@ -232,10 +359,7 @@ namespace BASE.Service.Core.Utils
             if (string.IsNullOrEmpty(dateString))
                 return DateTime.MinValue;
 
-            if (formats == null)
-            {
-                formats = new[] { "dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "dd-MM-yyyy" };
-            }
+            formats ??= new[] { "dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "dd-MM-yyyy" };
 
             if (DateTime.TryParseExact(dateString, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result))
                 return result;
@@ -245,6 +369,7 @@ namespace BASE.Service.Core.Utils
 
             return DateTime.MinValue;
         }
+
         #endregion
     }
 }

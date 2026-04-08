@@ -4,6 +4,7 @@ using System.Text;
 using BASE.Service.Core.Enum;
 using BASE.Service.Core.Model;
 using BASE.Service.Core.Services;
+using BASE.Service.Core.Utils;
 using Dapper;
 using MySqlConnector;
 
@@ -373,6 +374,11 @@ namespace BASE.Service.Core.Database
             return new PagingResponse(pageData, total);
         }
 
+        /// <summary>
+        /// Sinh ra câu lệnh truy vấn dữ liệu
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
         public PagingSQLBuilder GenerateSqlPaging(PagingRequest request)
         {
             var parameters = new Dictionary<string, object>();
@@ -381,17 +387,17 @@ namespace BASE.Service.Core.Database
             var columns = string.IsNullOrWhiteSpace(request.Columns) ? "*" : request.Columns;
             var tableName = request.ViewOrTableName;
 
-            var hasSelectedValue = request.SelectedValue != null
-                && !string.IsNullOrWhiteSpace(request.SelectedValue.Property)
-                && request.SelectedValue.Value != null;
-
             // Build WHERE clause 
             string finalWhereClause;
-            if (hasSelectedValue)
+            bool hasSelectedValue = false;
+            if (request.SelectedValue != null && !string.IsNullOrWhiteSpace(request.SelectedValue.Property) && request.SelectedValue.Value != null)
             {
+                hasSelectedValue = true;
                 var selectedParamName = "@selectedValue";
                 var selectedProperty = $"`{request.SelectedValue.Property}`";
-                parameters[selectedParamName] = request.SelectedValue.Value.ToString();
+
+                var selectedValueConvert = ConvertUtil.ConvertValueByDataType(request.SelectedValue.DataType, request.SelectedValue.Value);
+                parameters.Add(selectedParamName, selectedValueConvert);
 
                 var selectedCondition = $"{selectedProperty} = {selectedParamName}";
 
@@ -496,30 +502,32 @@ namespace BASE.Service.Core.Database
         {
             var property = $"`{filter.Property}`";
 
+            var convertedValue = ConvertUtil.ConvertValueByDataType(filter.DataType, filter.Value) ?? filter.Value;
+
             switch (filter.Operator)
             {
                 case FilterOperator.Equal:
-                    parameters[paramName] = filter.Value;
+                    parameters[paramName] = convertedValue;
                     return $"{property} = {paramName}";
 
                 case FilterOperator.NotEqual:
-                    parameters[paramName] = filter.Value;
+                    parameters[paramName] = convertedValue;
                     return $"{property} <> {paramName}";
 
                 case FilterOperator.Contains:
-                    parameters[paramName] = $"%{filter.Value}%";
+                    parameters[paramName] = $"%{convertedValue}%";
                     return $"{property} LIKE {paramName}";
 
                 case FilterOperator.NotContains:
-                    parameters[paramName] = $"%{filter.Value}%";
+                    parameters[paramName] = $"%{convertedValue}%";
                     return $"{property} NOT LIKE {paramName}";
 
                 case FilterOperator.StartsWith:
-                    parameters[paramName] = $"{filter.Value}%";
+                    parameters[paramName] = $"{convertedValue}%";
                     return $"{property} LIKE {paramName}";
 
                 case FilterOperator.EndsWith:
-                    parameters[paramName] = $"%{filter.Value}";
+                    parameters[paramName] = $"%{convertedValue}";
                     return $"{property} LIKE {paramName}";
 
                 case FilterOperator.IsNullOrEmpty:
@@ -529,53 +537,51 @@ namespace BASE.Service.Core.Database
                     return $"({property} IS NOT NULL AND {property} <> '')";
 
                 case FilterOperator.LessThan:
-                    parameters[paramName] = filter.Value;
+                    parameters[paramName] = convertedValue;
                     return $"{property} < {paramName}";
 
                 case FilterOperator.LessThanOrEqual:
-                    parameters[paramName] = filter.Value;
+                    parameters[paramName] = convertedValue;
                     return $"{property} <= {paramName}";
 
                 case FilterOperator.GreaterThan:
-                    parameters[paramName] = filter.Value;
+                    parameters[paramName] = convertedValue;
                     return $"{property} > {paramName}";
 
                 case FilterOperator.GreaterThanOrEqual:
-                    parameters[paramName] = filter.Value;
+                    parameters[paramName] = convertedValue;
                     return $"{property} >= {paramName}";
 
                 case FilterOperator.In:
                     if (filter.Value is IEnumerable<object> inValues)
                     {
-                        var inParams = new List<string>();
-                        int j = 0;
-                        foreach (var val in inValues)
-                        {
-                            var inParamName = $"@p{index}_in{j}";
-                            parameters[inParamName] = val;
-                            inParams.Add(inParamName);
-                            j++;
-                        }
+                        var inParams = inValues
+                            .Select((val, j) =>
+                            {
+                                var inParamName = $"@p{index}_in{j}";
+                                parameters[inParamName] = ConvertUtil.ConvertValueByDataType(filter.DataType, val) ?? val;
+                                return inParamName;
+                            })
+                            .ToList();
                         return $"{property} IN ({string.Join(", ", inParams)})";
                     }
-                    parameters[paramName] = filter.Value;
+                    parameters[paramName] = convertedValue;
                     return $"{property} IN ({paramName})";
 
                 case FilterOperator.NotIn:
                     if (filter.Value is IEnumerable<object> notInValues)
                     {
-                        var notInParams = new List<string>();
-                        int k = 0;
-                        foreach (var val in notInValues)
-                        {
-                            var notInParamName = $"@p{index}_nin{k}";
-                            parameters[notInParamName] = val;
-                            notInParams.Add(notInParamName);
-                            k++;
-                        }
+                        var notInParams = notInValues
+                            .Select((val, k) =>
+                            {
+                                var notInParamName = $"@p{index}_nin{k}";
+                                parameters[notInParamName] = ConvertUtil.ConvertValueByDataType(filter.DataType, val) ?? val;
+                                return notInParamName;
+                            })
+                            .ToList();
                         return $"{property} NOT IN ({string.Join(", ", notInParams)})";
                     }
-                    parameters[paramName] = filter.Value;
+                    parameters[paramName] = convertedValue;
                     return $"{property} NOT IN ({paramName})";
 
                 case FilterOperator.Between:
@@ -583,8 +589,8 @@ namespace BASE.Service.Core.Database
                     {
                         var fromParam = $"@p{index}_from";
                         var toParam = $"@p{index}_to";
-                        parameters[fromParam] = betweenValues[0];
-                        parameters[toParam] = betweenValues[1];
+                        parameters[fromParam] = ConvertUtil.ConvertValueByDataType(filter.DataType, betweenValues[0]) ?? betweenValues[0];
+                        parameters[toParam] = ConvertUtil.ConvertValueByDataType(filter.DataType, betweenValues[1]) ?? betweenValues[1];
                         return $"{property} BETWEEN {fromParam} AND {toParam}";
                     }
                     return string.Empty;
@@ -774,8 +780,11 @@ namespace BASE.Service.Core.Database
         /// </summary>
         public async Task<object?> GetDataByID(Guid databaseID, Type modelType, string id, string columns = "*")
         {
-            var param = new Dictionary<string, object>();
-            var sql = GenerateSelectByID(param, modelType, id, columns);
+            var param = new Dictionary<string, object>() 
+            {
+                { "IDValue", id }
+            };
+            var sql = GenerateSelectByID(modelType, id, columns);
             var result = await QueryUsingCommandText<object>(databaseID, sql, param);
             return result.Count > 0 ? result.First() : null;
         }
@@ -783,11 +792,14 @@ namespace BASE.Service.Core.Database
         /// <summary>
         /// Lấy theo ID
         /// </summary>
-        public async Task<BaseModel> GetDataByID(Guid databaseID, Type modelType, string id)
+        public async Task<object> GetDataByID(Guid databaseID, Type modelType, string id)
         {
-            var param = new Dictionary<string, object>();
-            var sql = GenerateSelectByID(param, modelType, id);
-            var result = await QueryUsingCommandText<BaseModel>(databaseID, sql, param);
+            var param = new Dictionary<string, object>()
+            {
+                { "IDValue", id }
+            };
+            var sql = GenerateSelectByID(modelType, id);
+            var result = await QueryUsingCommandText<object>(databaseID, sql, param);
             return result.Count > 0 ? result.First() : null;
         }
 
@@ -796,8 +808,11 @@ namespace BASE.Service.Core.Database
         /// </summary>
         public async Task<T> GetDataByID<T>(Guid databaseID, string id) where T : BaseModel
         {
-            var param = new Dictionary<string, object>();
-            var sql = GenerateSelectByID(param, typeof(T), id);
+            var param = new Dictionary<string, object>()
+            {
+                { "IDValue", id }
+            };
+            var sql = GenerateSelectByID(typeof(T), id);
             var result = await QueryUsingCommandText<T>(databaseID, sql, param);
             return result.Count > 0 ? result.First() : null;
         }
@@ -811,13 +826,9 @@ namespace BASE.Service.Core.Database
         /// <param name="modelType">Kiểu dữ liệu của model</param>
         /// <param name="id">Giá trị ID cần tìm</param>
         /// <returns>Câu truy vấn SQL</returns>
-        public string GenerateSelectByID(Dictionary<string, object> param, Type modelType, string id, string columns = "*")
+        public string GenerateSelectByID(Type modelType, string id, string columns = "*")
         {
             var sql = $"SELECT {columns} FROM {modelType.GetViewOrTableName()} WHERE {modelType.GetPrimaryKeyFieldName()} = @IDValue;";
-            param = new Dictionary<string, object>()
-            {
-                { "IDValue",  GetSqlValue(id)}
-            };
             return sql;
         }
 
@@ -830,7 +841,7 @@ namespace BASE.Service.Core.Database
             Guid guidValue;
             if (Guid.TryParse(value, out guidValue))
             {
-                return guidValue;
+                return guidValue.ToString();
             }
             else
             {

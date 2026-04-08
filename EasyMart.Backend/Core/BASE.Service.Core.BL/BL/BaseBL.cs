@@ -150,7 +150,7 @@ namespace BASE.Service.Core.BL
         /// <param name="id">ID của bản ghi cần lấy.</param>
         /// <param name="columns">Danh sách cột cần lấy, mặc định là tất cả (*).</param>
         /// <returns>Bản ghi tương ứng với ID hoặc null nếu không tìm thấy.</returns>
-        public async Task<BaseModel> GetDataByID(Type modelType, string id, string columns = "*")
+        public async Task<object> GetDataByID(Type modelType, string id, string columns = "*")
         {
             return await _mySQLService.GetDataByID(DatabaseID, modelType, id);
         }

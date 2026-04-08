@@ -33,7 +33,7 @@ namespace BASE.Service.Core.BL
                 }
 
                 // Bước 2: Validate nghiệp vụ
-                var validateResults = ValidateBeforeSaveData(model);
+                var validateResults = await ValidateBeforeSaveData(model);
                 if (validateResults != null && validateResults.Any())
                 {
                     res.Success = false;
@@ -275,14 +275,14 @@ namespace BASE.Service.Core.BL
         /// <summary>
         /// Validate danh sách dữ liệu
         /// </summary>
-        public virtual List<ValidateResult> ValidateListData(List<BaseModel> models)
+        public virtual async Task<List<ValidateResult>> ValidateListData(List<BaseModel> models)
         {
             var validateResults = new List<ValidateResult>();
 
             for (int i = 0; i < models.Count; i++)
             {
                 var model = models[i];
-                var results = ValidateBeforeSaveData(model);
+                var results = await ValidateBeforeSaveData(model);
                 if (results != null && results.Any())
                 {
                     validateResults.AddRange(results);
@@ -331,7 +331,7 @@ namespace BASE.Service.Core.BL
                 }
 
                 // Bước 2: Validate tất cả models
-                var validationErrors = ValidateListData(models);
+                var validationErrors = await ValidateListData(models);
                 if (validationErrors != null && validationErrors.Any())
                 {
                     res.Success = false;
@@ -939,9 +939,9 @@ namespace BASE.Service.Core.BL
         /// </summary>
         /// <param name="model">Model cần validate</param>
         /// <returns>Danh sách lỗi validation (rỗng nếu hợp lệ)</returns>
-        public virtual List<ValidateResult> ValidateBeforeSaveData(BaseModel model)
+        public virtual async Task<List<ValidateResult>> ValidateBeforeSaveData(BaseModel model)
         {
-            return new List<ValidateResult>();
+            return await Task.FromResult(new List<ValidateResult>());
         }
 
         /// <summary>

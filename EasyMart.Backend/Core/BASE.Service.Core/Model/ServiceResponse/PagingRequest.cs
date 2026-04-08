@@ -119,6 +119,11 @@ namespace BASE.Service.Core.Model
         /// Giá trị dùng để so sánh khi lọc (có thể là string, số, DateTime,...).
         /// </summary>
         public object Value { get; set; }
+
+        /// <summary>
+        /// Kiểu dữ liệu của thuộc tính.
+        /// </summary>
+        public DataType DataType { get; set; }
     }
 
     /// <summary>

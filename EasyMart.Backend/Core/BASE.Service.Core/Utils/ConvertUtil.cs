@@ -36,6 +36,13 @@ namespace BASE.Service.Core.Utils
         }
 
 
+        public static string SerializeObject(object obj, bool ignoreNullValue = false, bool excludeBaseProperties = false, bool ignoreJsonIgnoreAttribute = false)
+        {
+            return JsonConvert.SerializeObject(obj);
+        }
+
+
+
         #region DataType Conversion
 
         /// <summary>

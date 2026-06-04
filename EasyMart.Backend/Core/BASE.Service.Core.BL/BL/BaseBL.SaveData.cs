@@ -1,6 +1,7 @@
 using BASE.Service.Core.Enum;
 using BASE.Service.Core.Model;
 using Dapper;
+using System.Collections;
 using System.Data;
 using System.Reflection;
 
@@ -154,7 +155,7 @@ namespace BASE.Service.Core.BL
             if (model == null)
                 throw new ArgumentNullException(nameof(model));
 
-            var tableName = model.GetViewOrTableName();
+            var tableName = model.GetTableName();
             var primaryKeyName = model.GetPrimaykeyField();
 
             if (string.IsNullOrEmpty(primaryKeyName))
@@ -173,14 +174,51 @@ namespace BASE.Service.Core.BL
             if (pkProp == null)
                 throw new InvalidOperationException($"Primary key '{primaryKeyName}' not found in model properties");
 
-            // Xử lý theo ModelState với async
-            return model.ModelState switch
+            switch (model.ModelState)
             {
-                ModelState.Insert => await ExecuteInsert(model, tableName, props, pkProp, cnn, tran),
-                ModelState.Update => await ExecuteUpdate(model, tableName, props, pkProp, primaryKeyName, cnn, tran),
-                ModelState.Delete => await ExecuteDelete(model, tableName, pkProp, primaryKeyName, cnn, tran),
-                _ => throw new InvalidOperationException($"Unsupported ModelState: {model.ModelState}")
-            };
+                case ModelState.Insert:
+                    await ExecuteInsert(model, tableName, props, pkProp, cnn, tran);
+                    break;
+                case ModelState.Update:
+                    await ExecuteUpdate(model, tableName, props, pkProp, primaryKeyName, cnn, tran);
+                    break;
+                case ModelState.Delete:
+                    await ExecuteDelete(model, tableName, pkProp, primaryKeyName, cnn, tran);
+                    break;
+            }
+
+            // Xử lý SaveDetail
+            if (model.ModelDetailConfigs?.Count > 0)
+            {
+                foreach(var detailConfig in model.ModelDetailConfigs.Where(item => !string.IsNullOrEmpty(item.PropertyOnMasterModel)))
+                {
+                    IList listDetails = model.GetValue<IList>(detailConfig.PropertyOnMasterModel);
+                    if (listDetails != null)
+                    {
+                        foreach (BaseModel detail in listDetails)
+                        {
+                            // Nếu mà xóa Master thì cũng phải xóa Detail
+                            if(model.ModelState == ModelState.Delete)
+                            {
+                                continue;
+                            }
+                            
+                            if (detail.ModelState == ModelState.Insert || detail.ModelState == ModelState.Update)
+                            {
+                                detail.SetValue(detailConfig.ForeignKeyName, model.GetPrimaryKeyValue());
+
+                                if (detail.ModelState == ModelState.Insert && detail.IsNullOrEmptyPrimary())
+                                {
+                                    detail.SetAutoPrimaryKey();
+                                }
+                            }
+
+                            await DoSaveData(detail, cnn, tran);
+                        }
+                    }
+                }
+            }
+            return true;
         }
 
         /// <summary>
@@ -467,7 +505,7 @@ namespace BASE.Service.Core.BL
 
             // Lấy thông tin từ model đầu tiên
             var firstModel = models.First();
-            var tableName = firstModel.GetViewOrTableName();
+            var tableName = firstModel.GetTableName();
             var primaryKeyName = firstModel.GetPrimaykeyField();
 
             // Lấy danh sách cột
@@ -529,7 +567,7 @@ namespace BASE.Service.Core.BL
                 return 0;
 
             var firstModel = models.First();
-            var tableName = firstModel.GetViewOrTableName();
+            var tableName = firstModel.GetTableName();
             var primaryKeyName = firstModel.GetPrimaykeyField();
 
             var dbColumns = await GetColumnByTableNameAsync(tableName, cnn, tran);
@@ -575,7 +613,51 @@ namespace BASE.Service.Core.BL
 
         #endregion
 
-        #region UpdateByField Async
+        #region Update methods
+
+        /// <summary>
+        /// Cập nhật trạng bản ghi hàng loạt
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="status"></param>
+        /// <returns></returns>
+        public virtual async Task<ServiceResponse> UpdateStatus<T>(List<Guid> ids, RecordStatus status) where T : BaseModel
+        {
+            var res = new ServiceResponse();
+            res.OnSuccess(false);
+            if (ids == null || !ids.Any())
+            {
+                return res;
+            }
+
+            var lstStatus = new List<RecordStatus>() { RecordStatus.Active, RecordStatus.Inactive };
+            if (lstStatus.Contains(status))
+            {
+                try
+                {
+                    var baseModel = Activator.CreateInstance<T>();
+                    string tableName = baseModel.GetTableName();
+                    string primaryKey = baseModel.GetPrimaykeyField();
+
+                    var param = new Dictionary<string, object>()
+                    {
+                        { "p_status", status },
+                        { "p_ids", ids }
+                    };
+
+                    string sql = $"UPDATE {tableName} SET Status = @p_status WHERE {primaryKey} IN @p_ids;";
+                    var rowsAffected = await _mySQLService.ExecuteUsingCommandText(DatabaseID, sql, param);
+                    res.OnSuccess(true);
+                }
+                catch (Exception ex)
+                {
+                    throw;
+                }
+            }
+
+            return res;
+        }
+
 
         /// <summary>
         /// Cập nhật dữ liệu dựa trên một trường cụ thể (không nhất thiết là Primary Key) - Async version
@@ -774,7 +856,7 @@ namespace BASE.Service.Core.BL
             IDbTransaction tran)
         {
             // Lấy thông tin bảng
-            var tableName = model.GetViewOrTableName();
+            var tableName = model.GetTableName();
             var primaryKeyName = model.GetPrimaykeyField();
 
             // Lấy danh sách cột từ DB
@@ -869,7 +951,7 @@ namespace BASE.Service.Core.BL
             IDbTransaction tran)
         {
             // Lấy thông tin bảng
-            var tableName = model.GetViewOrTableName();
+            var tableName = model.GetTableName();
 
             // Lấy danh sách cột từ DB
             var dbColumns = await GetColumnByTableNameAsync(tableName, cnn, tran);

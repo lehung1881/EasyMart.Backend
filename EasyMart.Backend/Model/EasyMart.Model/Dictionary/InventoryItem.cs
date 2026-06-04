@@ -1,6 +1,8 @@
 ﻿using BASE.Service.Core.Attribute;
+using BASE.Service.Core.Enum;
 using BASE.Service.Core.Model;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace EasyMart.Model.Dictionary
 {
@@ -67,13 +69,30 @@ namespace EasyMart.Model.Dictionary
         public string Images { get; set; }
 
         /// <summary>
-        /// Trạng thái hoạt động (1: Đang sử dụng, 2: Ngừng sử dụng)
+        /// 1: Đang sử dụng, 2: Ngừng sử dụng
         /// </summary>
-        public int Status { get; set; } = 1;
+        public RecordStatus Status { get; set; } = RecordStatus.Active;
 
         /// <summary>
         /// Ghi chú, mô tả chi tiết sản phẩm
         /// </summary>
         public string Description { get; set; }
+
+        /// <summary>
+        /// Đơn vị chuyển đổi
+        /// </summary>
+        [NotMapped]
+        public List<InventoryItemUnitConvert> InventoryItemUnitConverts { get; set; }
+
+        /// <summary>
+        /// Cấu hình Detail
+        /// </summary>
+        public InventoryItem()
+        {
+            this.ModelDetailConfigs = new List<ModelDetailConfig>()
+            {
+                new ModelDetailConfig("di_inventory_item_unit_convert", "InventoryItemID", "InventoryItemUnitConverts", true, true)
+            };
+        }
     }
 }

@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using BASE.Service.Core.Enum;
+using System.Text.Json.Serialization;
 
 namespace BASE.Service.Core.Model
 {
@@ -46,6 +47,13 @@ namespace BASE.Service.Core.Model
         [NotMapped]
         public List<string> UpdateColumns { get; set; }
 
+        /// <summary>
+        /// Cấu hình detail
+        /// </summary>
+        [NotMapped]
+        [JsonIgnore]
+        public List<ModelDetailConfig> ModelDetailConfigs { get; set; }
+
         #region Method
         /// <summary>
         /// Set giá trị
@@ -80,13 +88,22 @@ namespace BASE.Service.Core.Model
         /// <summary>
         /// Lấy tên bảng trong Database
         /// </summary>
-        /// <param name="hasSchema"></param>
         /// <returns></returns>
-        public string GetViewOrTableName(bool hasSchema = true)
+        public string GetViewOrTableName()
         {
             var tableAttr = (ConfigTable)GetType().GetCustomAttributes(typeof(ConfigTable), false).FirstOrDefault();
             string viewOrTabble = !string.IsNullOrEmpty(tableAttr.ViewName) ? tableAttr.ViewName : tableAttr.TableName;
             return viewOrTabble;
+        }
+
+        /// <summary>
+        /// Lấy tên bảng trong Database
+        /// </summary>
+        /// <returns></returns>
+        public string GetTableName()
+        {
+            var tableAttr = (ConfigTable)GetType().GetCustomAttributes(typeof(ConfigTable), false).FirstOrDefault();
+            return tableAttr.TableName;
         }
 
         /// <summary>
@@ -107,6 +124,28 @@ namespace BASE.Service.Core.Model
         public object GetPrimaryKeyValue()
         {
             return this.GetValueByAttribute(typeof(KeyAttribute));
+        }
+
+        /// <summary>
+        /// Kiểm tra null khóa chính
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public bool IsNullOrEmptyPrimary()
+        {
+            var value = GetPrimaryKeyValue();
+
+            if (value is null)
+                return true;
+
+            return value switch
+            {
+                Guid g => g == Guid.Empty,
+                string s => string.IsNullOrWhiteSpace(s),
+                int i => i == 0,
+                long l => l == 0L,
+                _ => false
+            };
         }
 
         /// <summary>
@@ -149,6 +188,86 @@ namespace BASE.Service.Core.Model
         {
             return MemberwiseClone();
         }
+
+        /// <summary>
+        /// Set giá trị khóa chính mặc định
+        /// </summary>
+        public void SetAutoPrimaryKey()
+        {
+            SetValueAutoPrimaryKey();
+        }
+
+        /// <summary>
+        /// Set giá trị khóa chính mặc định
+        /// </summary>
+        internal protected virtual void SetValueAutoPrimaryKey()
+        {
+            PropertyInfo[] props = this.GetType().GetProperties();
+            PropertyInfo propertyInfoKey = null;
+            if (props != null)
+            {
+                propertyInfoKey = props.SingleOrDefault(p => p.GetCustomAttribute<KeyAttribute>(true) != null);
+                if (propertyInfoKey != null)
+                {
+                    if (propertyInfoKey.PropertyType == typeof(long))
+                    {
+                        // Int thường để tự tăng nên không cần set
+                    }
+                    else if (propertyInfoKey.PropertyType == typeof(Int32))
+                    {
+                        // Int thường để tự tăng nên không cần set
+                    }
+                    else if (propertyInfoKey.PropertyType == typeof(Guid))
+                    {
+                        propertyInfoKey.SetValue(this, Guid.NewGuid()); // Nếu là GUID thì tự sinh NewGuid()
+                    }
+                    else
+                    {
+                        // String thường đã có giá trị nên không cần set
+                    }
+                }
+            }
+        }
+
         #endregion
+    }
+
+    /// <summary>
+    /// Cấu hình chi tiết detail
+    /// </summary>
+    public class ModelDetailConfig
+    {
+        /// <summary>
+        /// Tên bảng detail trong DB
+        /// </summary>
+        public string DetailTableName { get; set; }
+        /// <summary>  
+        /// Tên cột ForeignKey  
+        /// </summary>  
+        public string ForeignKeyName { get; set; }
+
+        /// <summary>  
+        /// Tên property kiểu List of detailObject trên master model  
+        /// </summary>  
+        public string PropertyOnMasterModel { get; set; }
+
+        /// <summary>  
+        /// Có xóa trước khi xóa master model không  
+        /// </summary>  
+        public bool CascadeOnDeleteMasterModel { get; set; }
+
+        /// <summary>
+        /// Xóa detail trước khi insert/update lại
+        /// </summary>
+        public bool DeleteBeforeUpsert { get; set; } = false;
+
+        public ModelDetailConfig(string detailTableName, string foreignKeyName, string propertyOnMasterModel, bool cascadeOnDeleteMasterModel, bool deleteBeforeUpsert)
+        {
+            this.DetailTableName = detailTableName;
+            this.ForeignKeyName = foreignKeyName;
+            this.PropertyOnMasterModel = propertyOnMasterModel;
+            this.CascadeOnDeleteMasterModel = cascadeOnDeleteMasterModel;
+            this.DeleteBeforeUpsert = deleteBeforeUpsert;
+        }
     }
 }

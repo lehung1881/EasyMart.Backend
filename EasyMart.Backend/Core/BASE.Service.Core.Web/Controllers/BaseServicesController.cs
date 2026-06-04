@@ -4,6 +4,7 @@ using BASE.Service.Core.Model;
 using BASE.Service.Core.Services;
 using BASE.Service.Core.Utils;
 using Microsoft.AspNetCore.Mvc;
+using System.Runtime.CompilerServices;
 
 namespace BASE.Service.Core.Web
 {
@@ -105,6 +106,26 @@ namespace BASE.Service.Core.Web
 
         #region Methods
         /// <summary>
+        /// API sử dụng/ngừng sử dụng
+        /// </summary>
+        /// <param name="model">Dữ liệu của bản ghi cần thêm</param>
+        /// <returns>
+        [HttpPost("update_status/{status}")]
+        public async Task<ServiceResponse> UpdateStatus(List<Guid> ids, RecordStatus status)
+        {
+            var res = new ServiceResponse();
+            try
+            {
+                res = await BLObject.UpdateStatus<TModel>(ids, status);
+            }
+            catch (Exception ex)
+            {
+                res.OnError(ServiceResponseCode.Exception, ex.Message);
+            }
+            return res;
+        }
+
+        /// <summary>
         /// API lấy bản ghi theo ID
         /// </summary>
         /// <param name="id">ID của bản ghi cần lấy</param>
@@ -116,6 +137,30 @@ namespace BASE.Service.Core.Web
             try
             {
                 var data = await BLObject.GetDataByID(this.CurrentModelType, id);
+                if (data != null)
+                {
+                    res.OnSuccess(data);
+                }
+            }
+            catch (Exception ex)
+            {
+                res.OnError(ServiceResponseCode.Exception, ex.Message);
+            }
+            return res;
+        }
+
+        /// <summary>
+        /// API lấy bản ghi theo ID
+        /// </summary>
+        /// <param name="id">ID của bản ghi cần lấy</param>
+        /// <returns>
+        [HttpGet("master_detail/{id}")]
+        public async Task<ServiceResponse> GetMasterDetail(string id)
+        {
+            var res = new ServiceResponse();
+            try
+            {
+                var data = await BLObject.GetMasterDetail(this.CurrentModelType, id);
                 if (data != null)
                 {
                     res.OnSuccess(data);
@@ -179,6 +224,34 @@ namespace BASE.Service.Core.Web
         /// <returns>
         [HttpPost("paging_filter")]
         public async Task<ServiceResponse> PagingFilter(PagingRequest request)
+        {
+            var res = new ServiceResponse();
+            try
+            {
+                PagingResponse data = await BLObject.GetDataPaging(request);
+                if (data == null)
+                {
+                    res.OnError(ServiceResponseCode.NotFound);
+                }
+                else
+                {
+                    res.OnSuccess(data);
+                }
+            }
+            catch (Exception ex)
+            {
+                res.OnError(ServiceResponseCode.Exception, ex.Message);
+            }
+            return res;
+        }
+
+        /// <summary>
+        /// API lấy danh sách bản ghi có phân trang và lọc cho combobox
+        /// </summary>
+        /// <param name="request">Object chứa các tham số phân trang và lọc</param>
+        /// <returns>
+        [HttpPost("paging_combobox")]
+        public async Task<ServiceResponse> GetDataCombobox(PagingRequest request)
         {
             var res = new ServiceResponse();
             try

@@ -3,6 +3,7 @@ using BASE.Service.Core.Services;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Reflection;
+using System.Text;
 
 namespace BASE.Service.Core.BL
 {
@@ -164,6 +165,100 @@ namespace BASE.Service.Core.BL
             return await _mySQLService.GetDataPaging(DatabaseID, pagingRequest);
         }
 
+        /// <summary>
+        /// Lấy dữ liệu Master kèm theo các Detail được cấu hình trong ModelDetailConfigs.
+        /// Tận dụng QueryMultiple để gom tất cả queries vào 1 round-trip duy nhất.
+        /// </summary>
+        /// <param name="modelType">Kiểu model của Master.</param>
+        /// <param name="id">ID của bản ghi Master.</param>
+        /// <param name="columns">Danh sách cột cần lấy cho Master, mặc định là tất cả (*).</param>
+        /// <returns>
+        /// Object Master đã được gán dữ liệu Detail vào các property tương ứng,
+        /// hoặc null nếu không tìm thấy Master.
+        /// </returns>
+        public async Task<object> GetMasterDetail(Type modelType, string id, string columns = "*")
+        {
+            var tempInstance = (BaseModel)Activator.CreateInstance(modelType);
+            var detailConfigs = tempInstance.ModelDetailConfigs;
+
+            if (detailConfigs == null || detailConfigs.Count == 0)
+            {
+                return await GetDataByID(modelType, id, columns);
+            }
+
+            var sqlBuilder = new StringBuilder();
+            var param = new Dictionary<string, object> { { "MasterID", id } };
+
+            string masterPkField = modelType.GetPrimaryKeyFieldName();
+            string masterTable = modelType.GetViewOrTableName();
+            sqlBuilder.AppendLine($"SELECT {columns} FROM `{masterTable}` WHERE `{masterPkField}` = @MasterID LIMIT 1;");
+
+            // Resolve đúng item type từ property List<T> trên master
+            var masterProps = modelType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var detailItemTypes = new List<Type>();
+
+            foreach (var cfg in detailConfigs)
+            {
+                sqlBuilder.AppendLine(
+                    $"SELECT * FROM `{cfg.DetailTableName}` WHERE `{cfg.ForeignKeyName}` = @MasterID;"
+                );
+
+                // Lấy type T từ property List<T>
+                var prop = masterProps.FirstOrDefault(p =>
+                    string.Equals(p.Name, cfg.PropertyOnMasterModel, StringComparison.OrdinalIgnoreCase));
+
+                Type itemType = typeof(object);
+                if (prop != null && prop.PropertyType.IsGenericType)
+                {
+                    // Lấy đúng Type của detail
+                    itemType = prop.PropertyType.GetGenericArguments()[0];
+                }
+
+                detailItemTypes.Add(itemType);
+            }
+
+            // types = [masterModel, detailType1, detailType2, ...]
+            var types = new List<Type> { modelType };
+            types.AddRange(detailItemTypes);
+
+            var results = await _mySQLService.QueryMultipleUsingCommandText(
+                DatabaseID,
+                sqlBuilder.ToString(),
+                types,
+                param
+            );
+
+            var masterList = results[0];
+            if (masterList == null || masterList.Count == 0)
+                return null;
+
+            var master = (BaseModel)masterList[0];
+
+            // Cache reflection methods — chỉ resolve 1 lần
+            var castMethod = typeof(Enumerable).GetMethod("Cast")!;
+            var toListMethod = typeof(Enumerable).GetMethod("ToList")!;
+
+            for (int i = 0; i < detailConfigs.Count; i++)
+            {
+                var cfg = detailConfigs[i];
+                var itemType = detailItemTypes[i];
+
+                var prop = masterProps.FirstOrDefault(p =>
+                    string.Equals(p.Name, cfg.PropertyOnMasterModel, StringComparison.OrdinalIgnoreCase));
+
+                if (prop == null) continue;
+
+                // MakeGenericMethod chỉ tốn cost khi itemType khác nhau
+                var castedList = toListMethod.MakeGenericMethod(itemType).Invoke(null, new object[] {
+                    castMethod.MakeGenericMethod(itemType).Invoke(null, new object[] { results[i + 1] })
+                });
+
+                prop.SetValue(master, castedList);
+            }
+
+            return master;
+        }
+
         #endregion
 
         #region Helper Methods
@@ -191,13 +286,9 @@ namespace BASE.Service.Core.BL
         /// <param name="pkProp">PropertyInfo của trường Primary Key.</param>
         private static void EnsurePrimaryKey(BaseModel model, PropertyInfo pkProp)
         {
-            if (pkProp.PropertyType != typeof(Guid))
-                return;
-
-            var currentValue = (Guid?)pkProp.GetValue(model);
-            if (!currentValue.HasValue || currentValue == Guid.Empty)
+            if (model.IsNullOrEmptyPrimary())
             {
-                pkProp.SetValue(model, Guid.NewGuid());
+                model.SetAutoPrimaryKey();
             }
         }
 

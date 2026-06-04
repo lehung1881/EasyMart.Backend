@@ -1,4 +1,5 @@
 ﻿using BASE.Service.Core.Attribute;
+using BASE.Service.Core.Enum;
 using BASE.Service.Core.Model;
 using System.ComponentModel.DataAnnotations;
 
@@ -52,8 +53,8 @@ namespace EasyMart.Model.Dictionary
         public string Address { get; set; }
 
         /// <summary>
-        /// Trạng thái (1: Đang sử dụng, 2: Ngừng sử dụng)
+        /// 1: Đang sử dụng, 2: Ngừng sử dụng
         /// </summary>
-        public int Status { get; set; } = 1;
+        public RecordStatus Status { get; set; } = RecordStatus.Active;
     }
 }

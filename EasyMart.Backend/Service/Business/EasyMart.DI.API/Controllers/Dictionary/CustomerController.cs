@@ -4,7 +4,7 @@ using EasyMart.BL.Dictionary;
 using EasyMart.Model.Dictionary;
 using Microsoft.AspNetCore.Mvc;
 
-namespace EasyMart.DI.API.Controllers
+namespace EasyMart.DI.API.Controllers.Dictionary
 {
     [Route("v1/customer")]
     [ApiController]

@@ -44,6 +44,22 @@ namespace BASE.Service.Core.Enum
         TokenExpired = 6
     }
 
+    /// <summary>
+    /// Danh sách các trạng thái của bản ghi trong hệ thống
+    /// </summary>
+    public enum RecordStatus
+    {
+        /// <summary>
+        /// Đang sử dụng
+        /// </summary>
+        Active = 1,
+
+        /// <summary>
+        /// Ngừng sử dụng
+        /// </summary>
+        Inactive = 2
+    }
+
 
     public enum ModelState : int
     {

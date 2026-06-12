@@ -1,6 +1,10 @@
+
 using BASE.Service.Core.Attribute;
+using BASE.Service.Core.Enum;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -54,21 +58,16 @@ namespace BASE.Service.Core.Model
         [JsonIgnore]
         public List<ModelDetailConfig> ModelDetailConfigs { get; set; }
 
-        #region Method
-        /// <summary>
-        /// Set giá trị
-        /// </summary>
-        /// <param name="value"></param>
+        #region Table helpers
+
         public void SetPrimaryKey(string value)
         {
             PropertyInfo[] props = this.GetType().GetProperties();
-
             PropertyInfo propertyInfoKey = null;
+
             if (props != null)
             {
-                propertyInfoKey = props.SingleOrDefault(
-                    p => p.GetCustomAttribute<KeyAttribute>(true) != null
-                );
+                propertyInfoKey = props.SingleOrDefault(p => p.GetCustomAttribute<KeyAttribute>(true) != null);
 
                 if (propertyInfoKey != null)
                 {
@@ -84,11 +83,6 @@ namespace BASE.Service.Core.Model
             }
         }
 
-
-        /// <summary>
-        /// Lấy tên bảng trong Database
-        /// </summary>
-        /// <returns></returns>
         public string GetViewOrTableName()
         {
             var tableAttr = (ConfigTable)GetType().GetCustomAttributes(typeof(ConfigTable), false).FirstOrDefault();
@@ -135,8 +129,7 @@ namespace BASE.Service.Core.Model
         {
             var value = GetPrimaryKeyValue();
 
-            if (value is null)
-                return true;
+            if (value is null) return true;
 
             return value switch
             {
@@ -204,6 +197,7 @@ namespace BASE.Service.Core.Model
         {
             PropertyInfo[] props = this.GetType().GetProperties();
             PropertyInfo propertyInfoKey = null;
+
             if (props != null)
             {
                 propertyInfoKey = props.SingleOrDefault(p => p.GetCustomAttribute<KeyAttribute>(true) != null);
@@ -219,7 +213,7 @@ namespace BASE.Service.Core.Model
                     }
                     else if (propertyInfoKey.PropertyType == typeof(Guid))
                     {
-                        propertyInfoKey.SetValue(this, Guid.NewGuid()); // Nếu là GUID thì tự sinh NewGuid()
+                        propertyInfoKey.SetValue(this, Guid.NewGuid());
                     }
                     else
                     {
@@ -230,11 +224,226 @@ namespace BASE.Service.Core.Model
         }
 
         #endregion
+
+        #region Validate (Insert: full | Update: only UpdateColumns)
+
+        private static readonly ConcurrentDictionary<Type, PropertyMeta[]> _validateMetaCache = new();
+
+        private sealed class PropertyMeta
+        {
+            public PropertyInfo Prop { get; init; }
+            public ValidationAttribute[] Validators { get; init; }
+            public bool IsNotMapped { get; init; }
+        }
+
+        /// <summary>
+        /// Validate cơ bản theo DataAnnotations: Required, MaxLength, MinLength, StringLength, Range, Regex, Email, Phone...
+        /// - Insert: validate tất cả property có gắn ValidationAttribute
+        /// - Update: chỉ validate những property nằm trong UpdateColumns (case-insensitive)
+        /// </summary>
+        public List<ValidateResult> ValidateBasic(bool ignoreNotMapped = true, bool treatEnumAsInvalidIfUndefined = true)
+        {
+            var errors = new List<ValidateResult>();
+            var type = GetType();
+            var metas = _validateMetaCache.GetOrAdd(type, BuildValidateMetas);
+
+            var recordId = GetPrimaryKeyValue();
+
+            HashSet<string> updateCols = null;
+            if (ModelState == ModelState.Update)
+            {
+                if (UpdateColumns == null || UpdateColumns.Count == 0)
+                {
+                    // Update mà không có UpdateColumns thì mặc định: không validate gì (đúng yêu cầu "chỉ validate các column có trong UpdateColumns")
+                    return errors;
+                }
+
+                updateCols = new HashSet<string>(UpdateColumns.Where(x => !string.IsNullOrWhiteSpace(x)), StringComparer.OrdinalIgnoreCase);
+            }
+
+            foreach (var meta in metas)
+            {
+                if (ignoreNotMapped && meta.IsNotMapped) continue;
+                if (meta.Validators == null || meta.Validators.Length == 0) continue;
+
+                if (updateCols != null && !updateCols.Contains(meta.Prop.Name))
+                    continue;
+
+                var value = meta.Prop.GetValue(this);
+
+                if (treatEnumAsInvalidIfUndefined)
+                {
+                    var enumType = GetEnumTypeIfAny(meta.Prop.PropertyType);
+                    if (enumType != null && value != null && !Enum.IsDefined(enumType, value))
+                    {
+                        errors.Add(new ValidateResult
+                        {
+                            ID = recordId,
+                            Code = "VALIDATE_ENUM_INVALID",
+                            ErrorMessage = $"{meta.Prop.Name} không hợp lệ.",
+                            AdditionInfo = new
+                            {
+                                Field = meta.Prop.Name,
+                                Rule = "Enum",
+                                AttemptedValue = value
+                            }
+                        });
+
+                        continue;
+                    }
+                }
+
+                foreach (var validator in meta.Validators)
+                {
+                    var context = new ValidationContext(this)
+                    {
+                        MemberName = meta.Prop.Name
+                    };
+
+                    var vr = validator.GetValidationResult(value, context);
+                    if (vr == ValidationResult.Success) continue;
+
+                    errors.Add(new ValidateResult
+                    {
+                        ID = recordId,
+                        Code = MapValidateCode(validator),
+                        ErrorMessage = vr?.ErrorMessage ?? $"{meta.Prop.Name} không hợp lệ.",
+                        AdditionInfo = BuildAdditionInfo(meta.Prop, validator, value)
+                    });
+                }
+            }
+
+            return errors;
+        }
+
+        private static PropertyMeta[] BuildValidateMetas(Type type)
+        {
+            var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.GetIndexParameters().Length == 0)
+                .ToArray();
+
+            var metas = new List<PropertyMeta>(props.Length);
+
+            foreach (var p in props)
+            {
+                var validators = p.GetCustomAttributes<ValidationAttribute>(true).ToArray();
+                var notMapped = p.GetCustomAttribute<NotMappedAttribute>(true) != null;
+
+                metas.Add(new PropertyMeta
+                {
+                    Prop = p,
+                    Validators = validators,
+                    IsNotMapped = notMapped
+                });
+            }
+
+            return metas.ToArray();
+        }
+
+        private static Type GetEnumTypeIfAny(Type t)
+        {
+            if (t.IsEnum) return t;
+            var underlying = Nullable.GetUnderlyingType(t);
+            if (underlying != null && underlying.IsEnum) return underlying;
+            return null;
+        }
+
+        private static string MapValidateCode(ValidationAttribute attr)
+        {
+            return attr switch
+            {
+                RequiredAttribute => "VALIDATE_REQUIRED",
+                MaxLengthAttribute => "VALIDATE_MAX_LENGTH",
+                MinLengthAttribute => "VALIDATE_MIN_LENGTH",
+                StringLengthAttribute => "VALIDATE_STRING_LENGTH",
+                RangeAttribute => "VALIDATE_RANGE",
+                RegularExpressionAttribute => "VALIDATE_REGEX",
+                EmailAddressAttribute => "VALIDATE_EMAIL",
+                PhoneAttribute => "VALIDATE_PHONE",
+                _ => "VALIDATE_INVALID"
+            };
+        }
+
+        private static object BuildAdditionInfo(PropertyInfo prop, ValidationAttribute attr, object attemptedValue)
+        {
+            if (attr is RequiredAttribute)
+            {
+                return new
+                {
+                    Field = prop.Name,
+                    Rule = "Required",
+                    AttemptedValue = attemptedValue
+                };
+            }
+
+            if (attr is MaxLengthAttribute maxLen)
+            {
+                return new
+                {
+                    Field = prop.Name,
+                    Rule = "MaxLength",
+                    MaxLength = maxLen.Length,
+                    AttemptedValue = attemptedValue
+                };
+            }
+
+            if (attr is MinLengthAttribute minLen)
+            {
+                return new
+                {
+                    Field = prop.Name,
+                    Rule = "MinLength",
+                    MinLength = minLen.Length,
+                    AttemptedValue = attemptedValue
+                };
+            }
+
+            if (attr is StringLengthAttribute strLen)
+            {
+                return new
+                {
+                    Field = prop.Name,
+                    Rule = "StringLength",
+                    MinimumLength = strLen.MinimumLength,
+                    MaximumLength = strLen.MaximumLength,
+                    AttemptedValue = attemptedValue
+                };
+            }
+
+            if (attr is RangeAttribute range)
+            {
+                return new
+                {
+                    Field = prop.Name,
+                    Rule = "Range",
+                    Minimum = range.Minimum,
+                    Maximum = range.Maximum,
+                    AttemptedValue = attemptedValue
+                };
+            }
+
+            if (attr is RegularExpressionAttribute regex)
+            {
+                return new
+                {
+                    Field = prop.Name,
+                    Rule = "Regex",
+                    Pattern = regex.Pattern,
+                    AttemptedValue = attemptedValue
+                };
+            }
+
+            return new
+            {
+                Field = prop.Name,
+                Rule = attr.GetType().Name,
+                AttemptedValue = attemptedValue
+            };
+        }
+
+        #endregion
     }
 
-    /// <summary>
-    /// Cấu hình chi tiết detail
-    /// </summary>
     public class ModelDetailConfig
     {
         /// <summary>

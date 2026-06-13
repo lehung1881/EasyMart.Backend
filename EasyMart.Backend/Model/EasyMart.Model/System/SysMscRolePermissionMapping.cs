@@ -1,7 +1,9 @@
 using BASE.Service.Core.Attribute;
 using BASE.Service.Core.Model;
+using BASE.Service.Core.Utils;
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace EasyMart.Model.System
 {
@@ -23,5 +25,15 @@ namespace EasyMart.Model.System
         /// Ví dụ: ["View","Add","Edit","Delete"]
         /// </summary>
         public string ListPermission { get; set; }
+
+        /// <summary>
+        /// List phân quyền Object
+        /// </summary>
+        [NotMapped]
+        public object ListPermissionObject
+        {
+            get => ConvertUtil.DeserializeObject<Dictionary<string, bool>>(ListPermission);
+            set => ListPermission = ConvertUtil.SerializeObject(value);
+        }
     }
 }

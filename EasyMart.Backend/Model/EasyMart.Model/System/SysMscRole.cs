@@ -17,6 +17,6 @@ namespace EasyMart.Model.System
 
         public string Description { get; set; }
 
-        public string SystemCode { get; set; }
+        public List<SysMscRolePermissionMapping> SysMscRolePermissionMapping { get; set; }
     }
 }

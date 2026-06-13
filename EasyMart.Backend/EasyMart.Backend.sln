@@ -28,7 +28,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyMart.Auth.API", "Servic
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Business", "Business", "{68DC9A4F-41FC-4085-A096-57CB963143ED}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyMart.DI.API", "Service\Business\EasyMart.DI.API\EasyMart.DI.API.csproj", "{67575F00-544E-477A-B343-73E3A0FE7D27}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyMart.Business.API", "Service\Business\EasyMart.DI.API\EasyMart.Business.API.csproj", "{67575F00-544E-477A-B343-73E3A0FE7D27}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyMart.BLBase", "BL\EasyMart.BLBase\EasyMart.BLBase.csproj", "{F33901CC-F3C1-4C92-A50A-299C8932BBA8}"
 EndProject
@@ -52,7 +52,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BASE.Service.Core.Model", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BASE.Service.Core.Web", "Core\BASE.Service.Core.Web\BASE.Service.Core.Web.csproj", "{432CC759-D587-4BDA-B310-1402188B754B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BASE.Service.Core.QueueService", "Core\BASE.Service.Core.QueueService\BASE.Service.Core.QueueService.csproj", "{A06AB833-4AC0-40B3-9B61-899630DC0045}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BASE.Service.Core.QueueService", "Core\BASE.Service.Core.QueueService\BASE.Service.Core.QueueService.csproj", "{A06AB833-4AC0-40B3-9B61-899630DC0045}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

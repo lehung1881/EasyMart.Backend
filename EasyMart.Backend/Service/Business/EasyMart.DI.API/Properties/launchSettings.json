@@ -16,7 +16,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "EasyMart.DI.API": {
+    "EasyMart.Business.API": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,

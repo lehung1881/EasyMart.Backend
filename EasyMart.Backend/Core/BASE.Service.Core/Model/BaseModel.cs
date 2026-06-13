@@ -1,17 +1,10 @@
 
 using BASE.Service.Core.Attribute;
 using BASE.Service.Core.Enum;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using BASE.Service.Core.Enum;
 using System.Text.Json.Serialization;
 
 namespace BASE.Service.Core.Model
@@ -60,6 +53,10 @@ namespace BASE.Service.Core.Model
 
         #region Table helpers
 
+        /// <summary>
+        /// Gán giá trị cho khóa chính của model.
+        /// Tự động chuyển đổi sang đúng kiểu dữ liệu.
+        /// </summary>
         public void SetPrimaryKey(string value)
         {
             PropertyInfo[] props = this.GetType().GetProperties();
@@ -83,6 +80,10 @@ namespace BASE.Service.Core.Model
             }
         }
 
+        /// <summary>
+        /// Lấy tên View hoặc Table được cấu hình.
+        /// Ưu tiên ViewName nếu được khai báo.
+        /// </summary>
         public string GetViewOrTableName()
         {
             var tableAttr = (ConfigTable)GetType().GetCustomAttributes(typeof(ConfigTable), false).FirstOrDefault();
@@ -229,6 +230,10 @@ namespace BASE.Service.Core.Model
 
         private static readonly ConcurrentDictionary<Type, PropertyMeta[]> _validateMetaCache = new();
 
+        /// <summary>
+        /// Metadata phục vụ validate property.
+        /// Lưu thông tin validator và trạng thái mapping.
+        /// </summary>
         private sealed class PropertyMeta
         {
             public PropertyInfo Prop { get; init; }
@@ -237,11 +242,10 @@ namespace BASE.Service.Core.Model
         }
 
         /// <summary>
-        /// Validate cơ bản theo DataAnnotations: Required, MaxLength, MinLength, StringLength, Range, Regex, Email, Phone...
-        /// - Insert: validate tất cả property có gắn ValidationAttribute
-        /// - Update: chỉ validate những property nằm trong UpdateColumns (case-insensitive)
+        /// Validate dữ liệu theo DataAnnotations.
+        /// Hỗ trợ Insert và Update theo UpdateColumns.
         /// </summary>
-        public List<ValidateResult> ValidateBasic(bool ignoreNotMapped = true, bool treatEnumAsInvalidIfUndefined = true)
+        public List<ValidateResult> ValidateModel(bool ignoreNotMapped = true)
         {
             var errors = new List<ValidateResult>();
             var type = GetType();
@@ -250,48 +254,31 @@ namespace BASE.Service.Core.Model
             var recordId = GetPrimaryKeyValue();
 
             HashSet<string> updateCols = null;
+
             if (ModelState == ModelState.Update)
             {
                 if (UpdateColumns == null || UpdateColumns.Count == 0)
                 {
-                    // Update mà không có UpdateColumns thì mặc định: không validate gì (đúng yêu cầu "chỉ validate các column có trong UpdateColumns")
                     return errors;
                 }
 
-                updateCols = new HashSet<string>(UpdateColumns.Where(x => !string.IsNullOrWhiteSpace(x)), StringComparer.OrdinalIgnoreCase);
+                updateCols = new HashSet<string>(
+                    UpdateColumns.Where(x => !string.IsNullOrWhiteSpace(x)),
+                    StringComparer.OrdinalIgnoreCase);
             }
 
             foreach (var meta in metas)
             {
-                if (ignoreNotMapped && meta.IsNotMapped) continue;
-                if (meta.Validators == null || meta.Validators.Length == 0) continue;
+                if (ignoreNotMapped && meta.IsNotMapped)
+                    continue;
+
+                if (meta.Validators == null || meta.Validators.Length == 0)
+                    continue;
 
                 if (updateCols != null && !updateCols.Contains(meta.Prop.Name))
                     continue;
 
                 var value = meta.Prop.GetValue(this);
-
-                if (treatEnumAsInvalidIfUndefined)
-                {
-                    var enumType = GetEnumTypeIfAny(meta.Prop.PropertyType);
-                    if (enumType != null && value != null && !Enum.IsDefined(enumType, value))
-                    {
-                        errors.Add(new ValidateResult
-                        {
-                            ID = recordId,
-                            Code = "VALIDATE_ENUM_INVALID",
-                            ErrorMessage = $"{meta.Prop.Name} không hợp lệ.",
-                            AdditionInfo = new
-                            {
-                                Field = meta.Prop.Name,
-                                Rule = "Enum",
-                                AttemptedValue = value
-                            }
-                        });
-
-                        continue;
-                    }
-                }
 
                 foreach (var validator in meta.Validators)
                 {
@@ -301,7 +288,9 @@ namespace BASE.Service.Core.Model
                     };
 
                     var vr = validator.GetValidationResult(value, context);
-                    if (vr == ValidationResult.Success) continue;
+
+                    if (vr == ValidationResult.Success)
+                        continue;
 
                     errors.Add(new ValidateResult
                     {
@@ -316,6 +305,10 @@ namespace BASE.Service.Core.Model
             return errors;
         }
 
+        /// <summary>
+        /// Xây dựng metadata phục vụ validate model.
+        /// Thu thập validator và trạng thái mapping của các property.
+        /// </summary>
         private static PropertyMeta[] BuildValidateMetas(Type type)
         {
             var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -338,14 +331,6 @@ namespace BASE.Service.Core.Model
             }
 
             return metas.ToArray();
-        }
-
-        private static Type GetEnumTypeIfAny(Type t)
-        {
-            if (t.IsEnum) return t;
-            var underlying = Nullable.GetUnderlyingType(t);
-            if (underlying != null && underlying.IsEnum) return underlying;
-            return null;
         }
 
         private static string MapValidateCode(ValidationAttribute attr)

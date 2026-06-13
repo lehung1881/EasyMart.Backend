@@ -7,7 +7,7 @@
 //using Microsoft.AspNetCore.Http;
 //using Microsoft.AspNetCore.Mvc;
 
-//namespace EasyMart.DI.API.Base
+//namespace EasyMart.Business.API.Base
 //{
 //    [Route("api/[controller]")]
 //    [ApiController]

@@ -22,7 +22,6 @@ namespace EasyMart.Model.System
 
         /// <summary>
         /// Danh sách quyền dạng JSON
-        /// Ví dụ: ["View","Add","Edit","Delete"]
         /// </summary>
         public string ListPermission { get; set; }
 

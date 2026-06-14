@@ -63,11 +63,14 @@ namespace BASE.Service.Core.Enum
 
     public enum ModelState : int
     {
+        None = 99,
+
         Insert = 0,
 
         Update = 1,
 
         Delete = 2,
+
     }
 
     /// <summary>

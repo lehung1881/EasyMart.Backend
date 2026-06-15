@@ -1,7 +1,7 @@
 ﻿using BASE.Service.Core.Services;
 using EasyMart.DLBase;
 
-namespace EasyMart.DL.Business
+namespace EasyMart.DL.System
 {
     public class DLRole : DLBaseEasyMart
     {

@@ -1,11 +1,10 @@
 ﻿using BASE.Service.Core.BL;
 using EasyMart.BLBase;
-using EasyMart.DL.Business;
-using EasyMart.DL.Dictionary;
+using EasyMart.DL.System;
 
-namespace EasyMart.BL.Dictionary
+namespace EasyMart.BL.System
 {
-    public class BLRole : BLBaseDictionary<DLRole>
+    public class BLRole : BLBaseEasyMart<DLRole>
     {
         public BLRole(CoreWebServiceCollection serviceCollection) : base(serviceCollection)
         {

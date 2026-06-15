@@ -1,8 +1,6 @@
 ﻿using BASE.Service.Core.BL;
 using BASE.Service.Core.Web;
-using EasyMart.BL.Dictionary;
-using EasyMart.DL.Business;
-using EasyMart.Model.Dictionary;
+using EasyMart.BL.System;
 using EasyMart.Model.System;
 using Microsoft.AspNetCore.Mvc;
 

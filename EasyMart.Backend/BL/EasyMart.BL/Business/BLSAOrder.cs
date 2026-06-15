@@ -7,7 +7,7 @@ namespace EasyMart.BL.Business
     /// <summary>
     /// BL Xử lý nghiệp vụ Đơn hàng
     /// </summary>
-    public class BLSAOrder : BLBaseDictionary<DLSAOrder>
+    public class BLSAOrder : BLBaseEasyMart<DLSAOrder>
     {
         public BLSAOrder(CoreWebServiceCollection serviceCollection) : base(serviceCollection)
         {

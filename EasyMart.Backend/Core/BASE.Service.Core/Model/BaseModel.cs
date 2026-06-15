@@ -36,7 +36,7 @@ namespace BASE.Service.Core.Model
         /// Trạng thái của model
         /// </summary>
         [NotMapped]
-        public ModelState ModelState { get; set; } = ModelState.Insert;
+        public ModelState ModelState { get; set; } = ModelState.None;
 
         /// <summary>
         /// Danh sách cột update

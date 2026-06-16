@@ -72,13 +72,10 @@ namespace BASE.Service.Core.Web
             builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
             // Add core Services
-            builder.Services.UseCoreServices();
-
-            // Add BL Services
-            // builder.Services.UseCoreBLServices();
+            //builder.Services.UseCoreServices();
 
             // Add services
-            builder.Services.UseWebCoreServices(configuration);
+            builder.Services.UseWebCoreServices();
         }
 
         /// <summary>

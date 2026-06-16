@@ -7,6 +7,9 @@ namespace BASE.Service.Core
         public static void UseCoreServices(this IServiceCollection service)
         {
             service.AddTransient<IAuthService, AuthService>();
+
+            service.AddDistributedMemoryCache();
+            service.AddSingleton<ICacheService, CacheService>();
         }
     }
 }

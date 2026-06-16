@@ -1,4 +1,6 @@
-﻿using BASE.Service.Core.Utils;
+﻿using BASE.Service.Core.Services;
+using BASE.Service.Core.Utils;
+using EasyMart.BL.System;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 //using Microsoft.AspNetCore.Mvc;
@@ -13,6 +15,7 @@ namespace EasyMart.BL.Library
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
     public class PermissionFilterAttribute : ActionFilterAttribute
     {
+        protected IServiceProvider _serviceProvider;
         /// <summary>
         /// Mã quyền cần kiểm tra.
         /// </summary>
@@ -84,6 +87,9 @@ namespace EasyMart.BL.Library
             {
                 return false;
             }
+
+            var bl = new BLUser(new BASE.Service.Core.BL.CoreWebServiceCollection(_serviceProvider));
+            await bl.GetUsercache();
 
             // TODO:
             // Resolve PermissionService từ DI

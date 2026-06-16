@@ -55,6 +55,11 @@ namespace BASE.Service.Core.Web
         protected IAuthService _authService { get => _serviceCollection.AuthService(); }
 
         /// <summary>
+        /// Cache service
+        /// </summary>
+        protected ICacheService _cacheService { get => _serviceCollection.CacheService(); }
+
+        /// <summary>
         /// Định danh của user hiện tại
         /// </summary>
         private Guid _userID = Guid.Empty;

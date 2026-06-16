@@ -6,7 +6,7 @@ namespace BASE.Service.Core.BL
 {
     public static class StartupExtensiton
     {
-        public static void UseBLServices(this IServiceCollection service, IConfiguration configuration)
+        public static void UseBLServices(this IServiceCollection service)
         {
             service.UseCoreServices();
             service.UseDatabaseServices();

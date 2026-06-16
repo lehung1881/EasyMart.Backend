@@ -41,6 +41,11 @@ namespace BASE.Service.Core.BL
         protected IMySQLService _mySQLService => _serviceCollection.MySQLService();
 
         /// <summary>
+        /// Cache service
+        /// </summary>
+        protected ICacheService _cacheService => _serviceCollection.CacheService();
+
+        /// <summary>
         /// Khởi tạo BaseBL với service collection được inject từ controller.
         /// </summary>
         /// <param name="serviceCollection">Collection chứa các service cần thiết.</param>

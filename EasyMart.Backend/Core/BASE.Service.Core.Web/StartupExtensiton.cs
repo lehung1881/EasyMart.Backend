@@ -6,9 +6,9 @@ namespace BASE.Service.Core.Web
 {
     public static class StartupExtensiton
     {
-        public static void UseWebCoreServices(this IServiceCollection service, IConfiguration configuration)
+        public static void UseWebCoreServices(this IServiceCollection service)
         {
-            service.UseBLServices(configuration);
+            service.UseBLServices();
         }
     }
 }

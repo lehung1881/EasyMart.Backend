@@ -35,6 +35,14 @@ namespace BASE.Service.Core.Model
         /// AllowedOrigins
         /// </summary>
         public string[] AllowedOrigins { get; set; }
+
+        /// <summary>
+        /// Cấu hình time cache
+        /// </summary>
+        public class CacheOptions
+        {
+            public int DefaultExpirationMinutes { get; set; } = 30;
+        }
     }
 
     /// <summary>

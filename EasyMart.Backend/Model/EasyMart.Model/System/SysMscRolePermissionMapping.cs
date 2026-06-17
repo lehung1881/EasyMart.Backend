@@ -35,4 +35,20 @@ namespace EasyMart.Model.System
             set => ListPermission = ConvertUtil.SerializeObject(value);
         }
     }
+
+    /// <summary>
+    /// Danh sách quyền User trả về để check
+    /// </summary>
+    public class SysMscPermissionMapping
+    {
+        /// <summary>
+        /// Mã màn hình/chức năng
+        /// </summary>
+        public string SubSystemCode { get; set; }
+
+        /// <summary>
+        /// Danh sách quyền dạng JSON
+        /// </summary>
+        public string ListPermission { get; set; }
+    }
 }

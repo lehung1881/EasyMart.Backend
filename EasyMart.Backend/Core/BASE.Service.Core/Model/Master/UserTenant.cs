@@ -16,12 +16,6 @@ namespace BASE.Service.Core.Model
         public Guid TenantID { get; set; }
 
         /// <summary>
-        /// DatabaseID của tenant - được đưa vào JWT Claims
-        /// để middleware định tuyến đúng database khi gọi API nghiệp vụ
-        /// </summary>
-        public Guid DatabaseID { get; set; }
-
-        /// <summary>
         /// Thời điểm gán
         /// </summary>
         public DateTime AssignedAt { get; set; }

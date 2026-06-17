@@ -90,24 +90,6 @@ namespace BASE.Service.Core.BL
             }
         }
 
-        private Guid _databaseID = Guid.Empty;
-
-        /// <summary>
-        /// ID database của tenant hiện tại, lấy từ header "X-DatabaseID".
-        /// Được khởi tạo lazy: chỉ gọi AuthService một lần, các lần sau lấy từ cache.
-        /// </summary>
-        protected Guid DatabaseID
-        {
-            get
-            {
-                if (_databaseID == Guid.Empty)
-                {
-                    _databaseID = _authService.GetDatabaseID();
-                }
-                return _databaseID;
-            }
-        }
-
         private string _fullName = string.Empty;
 
         /// <summary>
@@ -131,11 +113,11 @@ namespace BASE.Service.Core.BL
         #region Public Methods
 
         /// <summary>
-        /// Lấy connection theo databaseID (customer DB)
+        /// Lấy connection theo tenantID (customer DB)
         /// </summary>
         protected virtual async Task<IDbConnection> GetConnectionAsync()
         {
-            return await _mySQLService.GetDBConnectionAsync(DatabaseID);
+            return await _mySQLService.GetDBConnectionAsync(TenantID);
         }
 
         /// <summary>
@@ -146,7 +128,7 @@ namespace BASE.Service.Core.BL
         /// <returns>Bản ghi tương ứng với ID hoặc null nếu không tìm thấy.</returns>
         public async Task<T> GetDataByID<T>(string id) where T : BaseModel
         {
-            return await _mySQLService.GetDataByID<T>(DatabaseID, id);
+            return await _mySQLService.GetDataByID<T>(TenantID, id);
         }
 
         /// <summary>
@@ -158,7 +140,7 @@ namespace BASE.Service.Core.BL
         /// <returns>Bản ghi tương ứng với ID hoặc null nếu không tìm thấy.</returns>
         public async Task<object> GetDataByID(Type modelType, string id, string columns = "*")
         {
-            return await _mySQLService.GetDataByID(DatabaseID, modelType, id);
+            return await _mySQLService.GetDataByID(TenantID, modelType, id);
         }
 
         /// <summary>
@@ -167,7 +149,7 @@ namespace BASE.Service.Core.BL
         /// <returns><see cref="PagingResponse"/> chứa danh sách bản ghi và thông tin phân trang.</returns>
         public async Task<PagingResponse> GetDataPaging(PagingRequest pagingRequest)
         {
-            return await _mySQLService.GetDataPaging(DatabaseID, pagingRequest);
+            return await _mySQLService.GetDataPaging(TenantID, pagingRequest);
         }
 
         /// <summary>
@@ -227,7 +209,7 @@ namespace BASE.Service.Core.BL
             types.AddRange(detailItemTypes);
 
             var results = await _mySQLService.QueryMultipleUsingCommandText(
-                DatabaseID,
+                TenantID,
                 sqlBuilder.ToString(),
                 types,
                 param

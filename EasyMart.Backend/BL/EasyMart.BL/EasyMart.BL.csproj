@@ -7,11 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.11" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\DL\EasyMart.DL\EasyMart.DL.csproj" />
+    <ProjectReference Include="..\..\Library\EasyMart.Constant\EasyMart.Constant.csproj" />
     <ProjectReference Include="..\EasyMart.BLBase\EasyMart.BLBase.csproj" />
   </ItemGroup>
 

@@ -1,10 +1,14 @@
-﻿using BASE.Service.Core.Services;
+﻿using BASE.Service.Core.BL;
+using BASE.Service.Core.Services;
 using BASE.Service.Core.Utils;
 using EasyMart.BL.System;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Authorization;
+
 //using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.DependencyInjection;
 using System.Text;
 
 namespace EasyMart.BL.Library
@@ -38,11 +42,11 @@ namespace EasyMart.BL.Library
             ActionExecutingContext context,
             ActionExecutionDelegate next)
         {
-            //if (IsAllowAnonymous(context))
-            //{
-            //    await next();
-            //    return;
-            //}
+            if (IsAllowAnonymous(context))
+            {
+                await next();
+                return;
+            }
 
             bool check = await CheckPermissionAction(context);
 
@@ -77,29 +81,10 @@ namespace EasyMart.BL.Library
         private async Task<bool> CheckPermissionAction(ActionExecutingContext context)
         {
             var httpContext = context.HttpContext;
+            var coreWebServiceCollection = httpContext.RequestServices.GetService<CoreWebServiceCollection>();
 
-            // Lấy UserId từ JWT
-            string? userId = httpContext.User?
-                .FindFirst("UserId")?
-                .Value;
-
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                return false;
-            }
-
-            var bl = new BLUser(new BASE.Service.Core.BL.CoreWebServiceCollection(_serviceProvider));
-            await bl.GetUsercache();
-
-            // TODO:
-            // Resolve PermissionService từ DI
-
-            // var permissionService = httpContext.RequestServices
-            //     .GetRequiredService<IPermissionService>();
-
-            // return await permissionService
-            //     .HasPermissionAsync(userId, _permissionCode);
-
+            var bl = new BLUser(coreWebServiceCollection);
+            var userPermissions = await bl.GetPermissionUserAsync();
             return true;
         }
 
@@ -107,10 +92,9 @@ namespace EasyMart.BL.Library
         /// Kiểm tra Action hiện tại có cho phép truy cập nặc danh hay không.
         /// Trả về true nếu có gắn AllowAnonymous.
         /// </summary>
-        //private static bool IsAllowAnonymous(ActionExecutingContext context)
-        //{
-        //    return context.ActionDescriptor.EndpointMetadata
-        //        .Any(x => x is AllowAnonymousAttribute);
-        //}
+        private static bool IsAllowAnonymous(ActionExecutingContext context)
+        {
+            return context.Filters.OfType<IAllowAnonymousFilter>().Any();
+        }
     }
 }

@@ -44,23 +44,6 @@ namespace BASE.Service.Core.Services
         }
 
         /// <summary>
-        /// Lấy DatabaseID từ header "X-DatabaseID" trong HTTP request hiện tại.
-        /// </summary>
-        /// <returns>
-        /// Trả về Guid đại diện cho ID database của tenant nếu tồn tại,
-        /// ngược lại trả về Guid.Empty.
-        /// </returns>
-        public Guid GetDatabaseID()
-        {
-            string databaseID = _httpContext.HttpContext?.Request?.Headers["X-DatabaseID"];
-            if (!string.IsNullOrEmpty(databaseID))
-            {
-                return Guid.Parse(databaseID);
-            }
-            return Guid.Empty;
-        }
-
-        /// <summary>
         /// Lấy TenantID từ header "X-TenantID" trong HTTP request hiện tại.
         /// </summary>
         /// <returns>

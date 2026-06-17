@@ -18,15 +18,6 @@ namespace BASE.Service.Core.Services
         Guid GetUserID();
 
         /// <summary>
-        /// Lấy DatabaseID từ header "X-DatabaseID" trong HTTP request hiện tại.
-        /// </summary>
-        /// <returns>
-        /// Trả về Guid đại diện cho ID database của tenant nếu tồn tại,
-        /// ngược lại trả về Guid.Empty.
-        /// </returns>
-        Guid GetDatabaseID();
-
-        /// <summary>
         /// Lấy TenantID từ header "X-TenantID" trong HTTP request hiện tại.
         /// </summary>
         /// <returns>

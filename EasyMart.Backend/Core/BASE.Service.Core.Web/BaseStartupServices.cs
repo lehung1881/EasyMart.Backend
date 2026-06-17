@@ -1,4 +1,5 @@
 ﻿using BASE.Service.Core.Model;
+using BASE.Service.Core.Model.Cache;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -120,9 +121,36 @@ namespace BASE.Service.Core.Web
                     return;
                 }
 
+                // 1. Load file appsettings.json
                 builder.Configuration.AddJsonFile(pathConfig, optional: false, reloadOnChange: true);
                 Console.WriteLine($"BaseStartupServices. InitConfigGlobal: Đã load config từ <{pathConfig}>.");
 
+                // 2. Xử lý load thêm file Cache.json
+                string directoryPath = Path.GetDirectoryName(pathConfig)!;
+                string pathCacheConfig = Path.Combine(directoryPath, "Cache.json");
+
+                if (File.Exists(pathCacheConfig))
+                {
+                    // Nạp file cấu hình vật lý vào hệ thống Configuration của .NET
+                    builder.Configuration.AddJsonFile(pathCacheConfig, optional: false, reloadOnChange: true);
+                    Console.WriteLine($"BaseStartupServices. InitConfigGlobal: Đã load config từ <{pathCacheConfig}>.");
+
+                    // Đăng ký và bind dữ liệu động vào Options sử dụng SectionName hằng số từ class của bạn
+                    builder.Services.Configure<CacheConfigOptions>(options =>
+                    {
+                        // Sử dụng CacheConfigOptions.SectionName ("CacheItems") thay vì viết cứng chuỗi chữ
+                        var sectionData = builder.Configuration.GetSection(CacheConfigOptions.SectionName)
+                                                               .Get<Dictionary<string, CacheItem>>();
+
+                        options.CacheItems = sectionData ?? new Dictionary<string, CacheItem>();
+                    });
+                }
+                else
+                {
+                    Console.WriteLine($"BaseStartupServices. InitConfigGlobal WARNING: Không tìm thấy file Cache.json tại <{pathCacheConfig}>.");
+                }
+
+                // 3. Khởi tạo GlobalConfig cũ của bạn
                 var config = builder.Configuration.GetSection("AppSettings").Get<AppSettings>() ?? new AppSettings();
                 GlobalConfig.InitConfig(config);
             }

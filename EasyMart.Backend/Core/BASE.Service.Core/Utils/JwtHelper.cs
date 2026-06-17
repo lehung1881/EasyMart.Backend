@@ -31,7 +31,6 @@ namespace BASE.Service.Core.Utils
                 new Claim(JwtClaimKeys.Email, user.Email),
                 new Claim(JwtClaimKeys.TokenID, Guid.NewGuid().ToString()),
                 new Claim(JwtClaimKeys.FullName, user.FullName),
-                new Claim(JwtClaimKeys.DatabaseID, user.DatabaseID.ToString()),
                 new Claim(JwtClaimKeys.TenantID, user.TenantID.ToString()),
             };
 

@@ -646,7 +646,7 @@ namespace BASE.Service.Core.BL
                     };
 
                     string sql = $"UPDATE {tableName} SET Status = @p_status WHERE {primaryKey} IN @p_ids;";
-                    var rowsAffected = await _mySQLService.ExecuteUsingCommandText(DatabaseID, sql, param);
+                    var rowsAffected = await _mySQLService.ExecuteUsingCommandText(TenantID, sql, param);
                     res.OnSuccess(true);
                 }
                 catch (Exception ex)
@@ -982,7 +982,7 @@ namespace BASE.Service.Core.BL
         /// </summary>
         protected virtual async Task<List<string>> GetColumnByTableNameAsync(string tableName, IDbConnection cnn, IDbTransaction tran = null)
         {
-            var cacheKey = $"{tableName}_{_databaseID.ToString()}";
+            var cacheKey = $"{tableName}_{_tenantID.ToString()}";
 
             if (_columnCache.TryGetValue(cacheKey, out var cached))
                 return cached;

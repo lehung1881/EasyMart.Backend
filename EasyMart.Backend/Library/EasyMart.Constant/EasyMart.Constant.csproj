@@ -7,8 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Core\BASE.Service.Core.Database\BASE.Service.Core.Database.csproj" />
-    <ProjectReference Include="..\..\Model\EasyMart.Model\EasyMart.Model.csproj" />
+    <Folder Include="Enum\" />
   </ItemGroup>
 
 </Project>

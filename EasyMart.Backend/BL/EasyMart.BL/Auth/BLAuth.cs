@@ -257,14 +257,7 @@ namespace EasyMart.BL.Auth
                 return res;
             }
 
-            // Bước 6: Cập nhật DatabaseID thật vào tenant_user
-            await DLObject.UpdateTenantUserDatabaseIDAsync(
-                newTenant.TenantID,
-                newUser.UserID,
-                newDatabaseID.Value
-            );
-
-            // Bước 7: Trả về thông tin User vừa tạo
+            // Bước 6: Trả về thông tin User vừa tạo
             var userInfo = await DLObject.GetUserInfoByIDAsync(newUser.UserID);
             res.OnSuccess(userInfo);
 
@@ -335,11 +328,10 @@ namespace EasyMart.BL.Auth
 
                 // Bước 4: Lưu thông tin kết nối vào tenant_database
                 var builder = new MySqlConnectionStringBuilder(masterConnStr);
-                var databaseID = Guid.NewGuid();
 
                 var tenantDatabase = new TenantDatabase
                 {
-                    DatabaseID = databaseID,
+                    DatabaseID = Guid.NewGuid(),
                     TenantID = tenantID,
                     Server = builder.Server,
                     Port = (int)builder.Port,
@@ -359,7 +351,7 @@ namespace EasyMart.BL.Auth
                     return null;
                 }
 
-                return databaseID;
+                return tenantID;
             }
             catch (Exception ex)
             {

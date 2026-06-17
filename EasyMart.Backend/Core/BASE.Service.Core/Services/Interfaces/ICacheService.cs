@@ -1,63 +1,32 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace BASE.Service.Core.Services
 {
+    /// <summary>
+    /// Interface định nghĩa các phương thức tương tác với hệ thống Cache (Hỗ trợ cấu hình động và placeholder)
+    /// </summary>
     public interface ICacheService
     {
         /// <summary>
-        /// Lấy dữ liệu từ cache theo key.
+        /// Lấy dữ liệu từ cache dựa trên tên cấu hình và danh sách tham số truyền vào.
         /// </summary>
-        /// <typeparam name="T">Kiểu dữ liệu cần lấy.</typeparam>
-        /// <param name="key">Khóa cache.</param>
-        /// <param name="cancellationToken">Token hủy tác vụ.</param>
-        /// <returns>Dữ liệu cache hoặc null nếu không tồn tại.</returns>
-        Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default);
+        Task<T?> GetAsync<T>(string cacheItemName, Dictionary<string, object>? placeholders = null);
 
         /// <summary>
-        /// Lưu dữ liệu vào cache.
+        /// Ghi dữ liệu vào cache dựa trên cấu hình, tự động tính toán thời gian hết hạn (TTL).
         /// </summary>
-        /// <typeparam name="T">Kiểu dữ liệu cần lưu.</typeparam>
-        /// <param name="key">Khóa cache.</param>
-        /// <param name="value">Dữ liệu cần lưu.</param>
-        /// <param name="expiration">Thời gian hết hạn.</param>
-        /// <param name="cancellationToken">Token hủy tác vụ.</param>
-        Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken cancellationToken = default);
+        Task SetAsync<T>(string cacheItemName, T value, Dictionary<string, object>? placeholders = null);
 
         /// <summary>
-        /// Xóa dữ liệu cache theo key.
+        /// Lấy dữ liệu từ cache. Nếu không tồn tại, thực thi hàm factory để lấy dữ liệu gốc, ghi lại vào cache và trả về (Có cơ chế chống Cache Stampede / Cache Avalanche).
         /// </summary>
-        /// <param name="key">Khóa cache.</param>
-        /// <param name="cancellationToken">Token hủy tác vụ.</param>
-        Task RemoveAsync(string key, CancellationToken cancellationToken = default);
+        Task<T> GetOrCreateAsync<T>(string cacheItemName, Func<Task<T>> factory, Dictionary<string, object>? placeholders = null);
 
         /// <summary>
-        /// Xóa nhiều cache theo danh sách key.
+        /// Xóa dữ liệu trong cache dựa trên tên cấu hình và tham số truyền vào.
         /// </summary>
-        /// <param name="keys">Danh sách khóa cache.</param>
-        /// <param name="cancellationToken">Token hủy tác vụ.</param>
-        Task RemoveManyAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Kiểm tra cache có tồn tại hay không.
-        /// </summary>
-        /// <param name="key">Khóa cache.</param>
-        /// <param name="cancellationToken">Token hủy tác vụ.</param>
-        /// <returns>True nếu tồn tại, ngược lại False.</returns>
-        Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Lấy dữ liệu từ cache, nếu chưa có thì tạo mới và lưu cache.
-        /// </summary>
-        /// <typeparam name="T">Kiểu dữ liệu.</typeparam>
-        /// <param name="key">Khóa cache.</param>
-        /// <param name="factory">Hàm lấy dữ liệu từ nguồn gốc.</param>
-        /// <param name="expiration">Thời gian hết hạn.</param>
-        /// <param name="cancellationToken">Token hủy tác vụ.</param>
-        /// <returns>Dữ liệu cache.</returns>
-        Task<T> GetOrCreateAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null, CancellationToken cancellationToken = default);
+        Task RemoveAsync(string cacheItemName, Dictionary<string, object>? placeholders = null);
     }
 }

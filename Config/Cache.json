@@ -1,0 +1,14 @@
+﻿{
+  "ConnectionStrings": {
+    "PrivateRedisCache": "192.168.11.83:6379,defaultDatabase=0"
+  },
+  "CacheItems": {
+    "UserPermission": {
+      "Type": 0,
+      "KeyPattern": "UserPermission_{TenantID}_{UserID}",
+      "AppendAppCodeToKey": false,
+      "TimeoutInSeconds": 28800,
+      "Description": "Cache danh sách quyền của người dùng theo phân hệ (Thời gian sống: 8 tiếng)"
+    }
+  }
+}

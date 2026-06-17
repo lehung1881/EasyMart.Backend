@@ -109,7 +109,7 @@ namespace BASE.Service.Core.Model
         /// <summary>
         /// Dữ liệu của người dùng
         /// </summary>
-        public Guid DatabaseID { get; set; }
+        public Guid tenantID { get; set; }
 
         /// <summary>
         /// Địa chỉ email của User.

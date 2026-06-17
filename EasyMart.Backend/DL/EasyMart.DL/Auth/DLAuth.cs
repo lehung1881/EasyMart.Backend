@@ -373,30 +373,6 @@ namespace EasyMart.DL.Auth
             return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, sql, parameters);
         }
 
-        /// <summary>
-        /// Cập nhật DatabaseID vào tenant_user sau khi tạo xong database thật.
-        /// </summary>
-        /// <param name="tenantID">ID của Tenant.</param>
-        /// <param name="userID">ID của User.</param>
-        /// <param name="databaseID">DatabaseID vừa được tạo.</param>
-        /// <returns><c>true</c> nếu cập nhật thành công; <c>false</c> nếu thất bại.</returns>
-        public async Task<bool> UpdateTenantUserDatabaseIDAsync(Guid tenantID, Guid userID, Guid databaseID)
-        {
-            var sql = @"
-                UPDATE tenant_user 
-                SET DatabaseID = @DatabaseID
-                WHERE TenantID = @TenantID AND UserID = @UserID";
-
-            var parameters = new Dictionary<string, object>
-            {
-                { "@DatabaseID", databaseID },
-                { "@TenantID",   tenantID },
-                { "@UserID",     userID },
-            };
-
-            return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, sql, parameters);
-        }
-
         #endregion
 
         #region Tenant Database

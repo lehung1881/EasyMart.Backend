@@ -5,7 +5,7 @@
         /// <summary>
         /// ID của Master Database
         /// </summary>
-        public static readonly Guid MasterDatabaseID = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        public static readonly Guid MasterEasyMartID = Guid.Parse("00000000-0000-0000-0000-000000000001");
     }
 
     public static class JwtClaimKeys
@@ -14,6 +14,6 @@
         public const string Email = "email";
         public const string TokenID = "jti";
         public const string FullName = "full_name";
-        public const string EasyMartID = "tenant_id";
+        public const string EasyMartID = "easymart_id";
     }
 }

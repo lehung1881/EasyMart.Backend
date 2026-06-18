@@ -3,8 +3,11 @@ using BASE.Service.Core.Enum;
 using BASE.Service.Core.Model;
 using BASE.Service.Core.Utils;
 using EasyMart.BLBase;
+using EasyMart.Constant.Constant;
 using EasyMart.DL.Auth;
+using EasyMart.Model.System;
 using MySql.Data.MySqlClient;
+using System.Data;
 
 namespace EasyMart.BL.Auth
 {
@@ -135,8 +138,8 @@ namespace EasyMart.BL.Auth
 
         /// <summary>
         /// Đăng ký tài khoản người dùng mới.
-        /// Kiểm tra email trùng lặp, mã hóa mật khẩu BCrypt, tạo Tenant và liên kết TenantUser
-        /// trong một transaction, sau đó tạo database riêng cho Tenant từ template DB.
+        /// Kiểm tra email trùng lặp, mã hóa mật khẩu BCrypt, tạo EasyMart và liên kết EasyMartAssignment
+        /// trong một transaction, sau đó tạo database riêng cho Đơn vị từ template DB.
         /// </summary>
         /// <param name="request">Thông tin đăng ký từ client.</param>
         /// <returns>
@@ -173,7 +176,7 @@ namespace EasyMart.BL.Auth
                 return res;
             }
 
-            // Bước 3: Chuẩn bị dữ liệu User và Tenant
+            // Bước 3: Chuẩn bị dữ liệu User và EasyMart (Chỉ định rõ Namespace để tránh trùng lặp dự án)
             var newUser = new User
             {
                 UserID = Guid.NewGuid(),
@@ -188,21 +191,21 @@ namespace EasyMart.BL.Auth
                 IsDeleted = false,
             };
 
-            var newTenant = new Tenant
+            var newEasyMart = new EasyMartEntity
             {
                 EasyMartID = Guid.NewGuid(),
-                EasyMartCode = GenerateTenantCode(),
-                EasyMartName = request.FullName.Trim(),
+                EasyMartCode = GenerateEasyMartCode(),
+                EasyMartName = request.EasyMartName,
                 ContactEmail = request.Email.Trim().ToLower(),
                 ContactPhone = request.PhoneNumber?.Trim(),
-                IsActive = true,
+                IsActive = 1,
                 ExpiredDate = DateTime.Now.AddDays(7),
                 CreatedDate = DateTime.Now,
-                IsDeleted = false,
+                IsDeleted = 0,
             };
 
-            // Bước 4: Lưu User + Tenant + TenantUser trong một transaction
-            var cnn = await _mySQLService.GetDBConnectionAsync(Constants.MasterDatabaseID);
+            // Bước 4: Lưu User + EasyMart + EasyMartAssignment trong một transaction liên kết thương mại
+            var cnn = await _mySQLService.GetDBConnectionAsync(Constants.MasterEasyMartID);
             using (cnn)
             {
                 cnn.Open();
@@ -217,22 +220,22 @@ namespace EasyMart.BL.Auth
                         return res;
                     }
 
-                    var saveTenantResult = await DLObject.SaveTenantAsync(newTenant, cnn, transaction);
-                    if (!saveTenantResult)
+                    var saveEasyMartResult = await DLObject.SaveEasyMartAsync(newEasyMart, cnn, transaction);
+                    if (!saveEasyMartResult)
                     {
                         transaction.Rollback();
                         res.OnError(ServiceResponseCode.Exception, "Khởi tạo cửa hàng thất bại. Vui lòng thử lại");
                         return res;
                     }
 
-                    var saveTenantUserResult = await DLObject.SaveTenantUserAsync(
-                        newTenant.EasyMartID,
+                    var saveAssignmentResult = await DLObject.SaveEasyMartAssignmentAsync(
+                        newEasyMart.EasyMartID,
                         newUser.UserID,
                         cnn,
                         transaction
                     );
 
-                    if (!saveTenantUserResult)
+                    if (!saveAssignmentResult)
                     {
                         transaction.Rollback();
                         res.OnError(ServiceResponseCode.Exception, "Liên kết tài khoản với cửa hàng thất bại. Vui lòng thử lại");
@@ -248,51 +251,91 @@ namespace EasyMart.BL.Auth
                 }
             }
 
-            // Bước 5: Tạo database riêng cho Tenant từ template DB
-            var newDatabaseID = await CreateEasyMartDatabaseAsync(newTenant.EasyMartID, newTenant.EasyMartCode);
-            if (newDatabaseID is null)
+            // Bước 5: Tạo database độc lập riêng cho Đơn vị mới từ template DB
+            var newDatabaseSuccess = await CreateEasyMartDatabaseAsync(newEasyMart.EasyMartID, newEasyMart.EasyMartCode);
+            if (!newDatabaseSuccess)
             {
-                await ClearInfoRegisterErrorAsync(newUser.UserID, newTenant.EasyMartID);
+                await ClearInfoRegisterErrorAsync(newUser.UserID, newEasyMart.EasyMartID);
                 res.OnError(ServiceResponseCode.Exception, "Tạo database cửa hàng thất bại. Vui lòng thử lại");
                 return res;
             }
 
-            // Bước 6: Trả về thông tin User vừa tạo
+            // Bước 6: Trả về thông tin User vừa tạo thành công
             var userInfo = await DLObject.GetUserInfoByIDAsync(newUser.UserID);
+
+            // Bước 7: Đồng bộ User về dữ liệu vừa tạo
+            await SyncUserToCompanySystemAsync(userInfo);
+
             res.OnSuccess(userInfo);
 
             return res;
         }
 
+        /// <summary>
+        /// Xử lý ngầm định User sau khi đăng ký và set quyền ngầm định
+        /// </summary>
+        /// <param name="newUser"></param>
+        /// <param name="easyMartID"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        private async Task SyncUserToCompanySystemAsync(UserInfo newUser)
+        {
+            try
+            {
+                var sysMscUser = new SysMscUser
+                {
+                    UserID = newUser.UserID,
+                    Email = newUser.Email,
+                    FullName = newUser.FullName,
+                    MobilePhone = newUser.PhoneNumber,
+                    Status = 0,
+                    RoleID = Guid.Parse(EasyMartConstant.RoleAdminID),
+                    RoleCode = EasyMartConstant.RoleAdminCode,
+                    RoleName = EasyMartConstant.RoleAdminName,
+                    IsSystem = true,
+                    CreatedDate = DateTime.Now,
+                    CreatedBy = "Hệ thống tự đồng bộ",
+                    ModifiedDate = DateTime.Now,
+                    ModifiedBy = "Hệ thống tự đồng bộ",
+                    ModelState = ModelState.Insert
+                };
+                SetEasyMartID(newUser.EasyMartID);
+                await SaveDataAsync(sysMscUser);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"[SyncUserToCompanySystemAsync] Đồng bộ tài khoản vào hệ thống công ty thất bại. UserID: {newUser.UserID}", ex);
+            }
+        }
+
         #endregion
 
-        #region Tenant Database
+        #region EasyMart Database Provisioning
 
         /// <summary>
-        /// Tạo database mới cho Tenant từ template DB,
-        /// sau đó lưu thông tin kết nối vào bảng tenant_database.
-        /// Nếu lưu metadata thất bại, database vừa tạo sẽ bị DROP để tránh dữ liệu rác.
+        /// Tạo database mới cho Đơn vị từ template DB, sau đó lưu metadata vào bảng easymart_db_config.
+        /// Nếu lưu cấu hình metadata thất bại, database vừa tạo sẽ bị DROP để tránh sinh rác dữ liệu.
         /// </summary>
-        /// <param name="easyMartID">ID của Tenant vừa tạo.</param>
-        /// <param name="tenantCode">Mã Tenant, dùng để đặt tên database mới.</param>
-        /// <returns><see cref="Guid"/> DatabaseID nếu thành công; <c>null</c> nếu thất bại.</returns>
-        private async Task<Guid?> CreateEasyMartDatabaseAsync(Guid easyMartID, string tenantCode)
+        /// <param name="easymartID">ID của Đơn vị vừa tạo.</param>
+        /// <param name="easyMartCode">Mã định danh Đơn vị, dùng để đặt tên DB vật lý.</param>
+        /// <returns><c>true</c> nếu toàn bộ quy trình thành công; <c>false</c> nếu thất bại.</returns>
+        private async Task<bool> CreateEasyMartDatabaseAsync(Guid easymartID, string easyMartCode)
         {
             var templateConnStr = GlobalConfig.AppSettings.ConnectionStrings.TemplateDB;
             var masterConnStr = GlobalConfig.AppSettings.ConnectionStrings.MasterDB;
 
-            var newDatabaseName = $"easymart_{tenantCode}_{DateTime.Now.Year}";
+            var newDatabaseName = $"easymart_{easyMartCode}_{DateTime.Now.Year}";
             var tempDir = Path.Combine(AppContext.BaseDirectory, "temp");
             var backupFile = Path.Combine(tempDir, $"{newDatabaseName}_{Guid.NewGuid():N}.sql");
             var dbCreated = false;
 
             try
             {
-                // Bước 1: Tạo thư mục temp nếu chưa có
+                // Bước 1: Tạo thư mục tạm lưu file cấu trúc kết xuất nếu chưa tồn tại
                 if (!Directory.Exists(tempDir))
                     Directory.CreateDirectory(tempDir);
 
-                // Bước 2: Backup DB template ra file .sql
+                // Bước 2: Sao lưu cơ sở dữ liệu mẫu (Template DB) ra tệp cấu trúc script .sql
                 using (var conn = new MySqlConnection(templateConnStr))
                 {
                     await conn.OpenAsync();
@@ -305,7 +348,7 @@ namespace EasyMart.BL.Auth
                     backup.ExportToFile(backupFile);
                 }
 
-                // Bước 3: Tạo database mới + restore từ file backup
+                // Bước 3: Khởi tạo schema Database mới vật lý và phục hồi cấu trúc dữ liệu
                 using (var conn = new MySqlConnection(masterConnStr))
                 {
                     await conn.OpenAsync();
@@ -317,7 +360,6 @@ namespace EasyMart.BL.Auth
                     }
 
                     dbCreated = true;
-
                     conn.ChangeDatabase(newDatabaseName);
 
                     using var restoreCmd = new MySqlCommand { Connection = conn };
@@ -326,51 +368,52 @@ namespace EasyMart.BL.Auth
                     restore.ImportFromFile(backupFile);
                 }
 
-                // Bước 4: Lưu thông tin kết nối vào tenant_database
+                // Bước 4: Đóng gói dữ liệu bản ghi ánh xạ lưu thông tin kết nối vào easymart_db_config
                 var builder = new MySqlConnectionStringBuilder(masterConnStr);
 
-                var tenantDatabase = new TenantDatabase
+                var dbConfig = new EasyMartDbConfig
                 {
-                    DatabaseID = Guid.NewGuid(),
-                    EasyMartID = easyMartID,
+                    EasyMartID = easymartID,
                     Server = builder.Server,
                     Port = (int)builder.Port,
                     Database = newDatabaseName,
                     UserID = builder.UserID,
                     Password = builder.Password,
-                    VersionDB = "0.0.0.1",
+                    VersionDB = "1.0.0.0",
+                    Env = "g2",
                     Status = 0,
-                    CreatedDate = DateTime.Now,
+                    CreatedDate = DateTime.Now
                 };
 
-                var saveResult = await DLObject.SaveTenantDatabaseAsync(tenantDatabase);
+                // Gọi hàm lưu thông tin cấu hình xuống DL
+                var saveResult = await DLObject.SaveEasyMartDbConfigAsync(dbConfig);
                 if (!saveResult)
                 {
-                    // Lưu metadata thất bại → DROP DATABASE để tránh DB rác
+                    // Lưu cấu hình metadata lỗi -> Hủy bỏ Database vật lý vừa tạo để tránh mâu thuẫn hệ thống
                     await DropDatabaseAsync(masterConnStr, newDatabaseName);
-                    return null;
+                    return false;
                 }
 
-                return easyMartID;
+                return true;
             }
             catch (Exception ex)
             {
-                // DB đã tạo nhưng restore hoặc lưu metadata thất bại → DROP DATABASE
+                // Nếu DB schema vật lý đã được dựng nhưng lỗi phát sinh ở bước sau -> tiến hành DROP DB cô lập lỗi
                 if (dbCreated)
                     await DropDatabaseAsync(masterConnStr, newDatabaseName);
 
-                throw new Exception($"Tạo database cho Tenant [{tenantCode}] thất bại: {ex.Message}", ex);
+                throw new Exception($"Tạo dữ liệu Database cho Siêu thị mã [{easyMartCode}] gặp sự cố: {ex.Message}", ex);
             }
             finally
             {
-                // Bước 5: Xóa file backup tạm dù thành công hay thất bại
+                // Bước 5: Thực hiện dọn dẹp giải phóng file lưu trữ script .sql tạm thời
                 if (File.Exists(backupFile))
                     File.Delete(backupFile);
             }
         }
 
         /// <summary>
-        /// Xóa database nếu quá trình tạo bị lỗi giữa chừng.
+        /// Xóa database biệt lập khi quá trình đồng bộ hóa dữ liệu phát sinh lỗi nghiêm trọng giữa chừng.
         /// </summary>
         private static async Task DropDatabaseAsync(string connStr, string databaseName)
         {
@@ -384,7 +427,7 @@ namespace EasyMart.BL.Auth
             }
             catch
             {
-                // Bỏ qua lỗi DROP — không throw để tránh che mất exception gốc
+                // Nuốt biệt lệ xử lý DROP âm thầm để không đè mất stack trace lỗi nghiệp vụ chính ở khối catch ngoại vi
             }
         }
 
@@ -393,13 +436,12 @@ namespace EasyMart.BL.Auth
         #region Private Helpers
 
         /// <summary>
-        /// Xử lý khi đăng nhập sai: tăng counter, khóa tài khoản nếu vượt ngưỡng 5 lần.
+        /// Xử lý tăng số lần đăng nhập lỗi liên tục, tự động khóa tài khoản khi chạm ngưỡng quy định.
         /// </summary>
         private async Task HandleFailedLoginAsync(User user)
         {
             user.FailedLoginCount++;
 
-            // Khóa tài khoản sau 5 lần sai liên tiếp
             if (user.FailedLoginCount >= 5)
             {
                 user.IsLocked = true;
@@ -409,7 +451,7 @@ namespace EasyMart.BL.Auth
         }
 
         /// <summary>
-        /// Reset counter đăng nhập sai khi đăng nhập thành công.
+        /// Khôi phục trạng thái bộ đếm đăng nhập sai khi người dùng xác thực thành công.
         /// </summary>
         private async Task ResetFailedLoginAsync(User user)
         {
@@ -421,34 +463,31 @@ namespace EasyMart.BL.Auth
         }
 
         /// <summary>
-        /// Rollback thủ công khi tạo database thất bại sau khi đã commit user/tenant/tenant_user.
-        /// Ủy thác việc xóa xuống DL để đảm bảo đúng thứ tự FK.
+        /// Dọn dẹp bản ghi thông tin đăng ký lỗi do quá trình khởi tạo Database cô lập thất bại.
         /// </summary>
-        private async Task ClearInfoRegisterErrorAsync(Guid userID, Guid easyMartID)
+        private async Task ClearInfoRegisterErrorAsync(Guid userID, Guid easymartID)
         {
             try
             {
-                await DLObject.ClearInfoRegisterErrorAsync(userID, easyMartID);
+                await DLObject.ClearInfoRegisterErrorAsync(userID, easymartID);
             }
             catch (Exception ex)
             {
-                // Không throw — không để lỗi rollback che mất lỗi gốc
-                // TODO: ghi log cảnh báo để xử lý dữ liệu rác thủ công nếu cần
+                // Ghi nhận log thầm lặng, không throw lỗi ra ngoài tránh phá hỏng luồng phản hồi thông báo gốc của API
                 _ = ex;
             }
         }
 
         /// <summary>
-        /// Sinh EasyMartCode ngẫu nhiên theo định dạng SHOP_xxxxxxxx.
+        /// Sinh mã định danh EasyMartCode ngẫu nhiên duy nhất cho chuỗi đại lý mới.
         /// </summary>
-        private static string GenerateTenantCode()
+        private static string GenerateEasyMartCode()
         {
             return Guid.NewGuid().ToString("N")[..8].ToLower();
         }
 
         /// <summary>
         /// Lấy thông tin người dùng hiện tại theo UserID.
-        /// Dùng cho endpoint /me để kiểm tra phiên đăng nhập còn hợp lệ không.
         /// </summary>
         /// <param name="userID">ID của người dùng cần lấy thông tin.</param>
         /// <returns>

@@ -12,9 +12,9 @@ namespace EasyMart.DL.System
         }
 
         /// <summary>
-        /// Thực hiện truy vấn vào Database của Tenant để lấy danh sách ánh xạ quyền của User
+        /// Thực hiện truy vấn vào Database của EasyMart để lấy danh sách ánh xạ quyền của User
         /// </summary>
-        public async Task<List<SysMscPermissionMapping>> BaseGetPermissionFromDbAsync(Guid easyMartID, Guid userID)
+        public async Task<List<SysMscPermissionMapping>> BaseGetPermissionFromDbAsync(Guid easymartID, Guid userID)
         {
             // 1. Định nghĩa câu lệnh SQL (Lấy các trường tương ứng với Property của Class nhận dữ liệu)
             const string commandText = @"
@@ -29,8 +29,8 @@ namespace EasyMart.DL.System
                 { "@UserID", userID }
             };
 
-            // 3. Thực thi truy vấn qua DatabaseService (easyMartID đóng vai trò là easyMartID)
-            var result = await _databaseService.QueryUsingCommandText<SysMscPermissionMapping>(easyMartID, commandText, parameters);
+            // 3. Thực thi truy vấn qua DatabaseService (easymartID đóng vai trò là easymartID)
+            var result = await _databaseService.QueryUsingCommandText<SysMscPermissionMapping>(easymartID, commandText, parameters);
 
             return result ?? new List<SysMscPermissionMapping>();
         }

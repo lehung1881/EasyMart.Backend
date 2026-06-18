@@ -12,8 +12,8 @@ namespace BASE.Service.Core.Database
 {
     public class MySQLService : IMySQLService
     {
-        // Cache để lưu trữ TenantDatabase theo DatabaseID
-        private static readonly ConcurrentDictionary<Guid, TenantDatabase> _databaseConfigCache = new ConcurrentDictionary<Guid, TenantDatabase>();
+        // Cache để lưu trữ EasyMartDbConfig theo DatabaseID
+        private static readonly ConcurrentDictionary<Guid, EasyMartDbConfig> _databaseConfigCache = new ConcurrentDictionary<Guid, EasyMartDbConfig>();
 
         public MySQLService()
         {
@@ -24,12 +24,12 @@ namespace BASE.Service.Core.Database
         /// <summary>
         /// Lấy chuỗi kết nối của customer từ master DB với cache
         /// </summary>
-        /// <param name="easyMartID">ID của customer database</param>
+        /// <param name="easymartID">ID của customer database</param>
         /// <returns>Connection string tương ứng</returns>
-        public async Task<TenantDatabase> GetDatabaseConfig(Guid easyMartID)
+        public async Task<EasyMartDbConfig> GetDatabaseConfig(Guid easymartID)
         {
             // Kiểm tra cache trước
-            if (_databaseConfigCache.TryGetValue(easyMartID, out var cachedConfig))
+            if (_databaseConfigCache.TryGetValue(easymartID, out var cachedConfig))
             {
                 return cachedConfig;
             }
@@ -40,16 +40,16 @@ namespace BASE.Service.Core.Database
             try
             {
                 masterConnection.Open();
-                const string sql = @"SELECT * FROM tenant_database WHERE EasyMartID = @EasyMartID AND Status = 0 LIMIT 1;";
-                var databaseConfig = await masterConnection.QueryFirstOrDefaultAsync<TenantDatabase>(sql, new { EasyMartID = easyMartID });
+                const string sql = @"SELECT * FROM easymart_db_config WHERE EasyMartID = @EasyMartID AND Status = 0 LIMIT 1;";
+                var databaseConfig = await masterConnection.QueryFirstOrDefaultAsync<EasyMartDbConfig>(sql, new { EasyMartID = easymartID });
 
                 if (databaseConfig == null)
                 {
-                    throw new InvalidOperationException($"Connection string not found for easyMartID: {easyMartID}");
+                    throw new InvalidOperationException($"Connection string not found for easymartID: {easymartID}");
                 }
 
                 // Lưu vào cache
-                _databaseConfigCache.TryAdd(easyMartID, databaseConfig);
+                _databaseConfigCache.TryAdd(easymartID, databaseConfig);
 
                 return databaseConfig;
             }
@@ -66,10 +66,10 @@ namespace BASE.Service.Core.Database
         /// <summary>
         /// Xóa cache của một database config cụ thể
         /// </summary>
-        /// <param name="easyMartID">ID của database cần xóa cache</param>
-        public void ClearDatabaseConfigCache(Guid easyMartID)
+        /// <param name="easymartID">ID của database cần xóa cache</param>
+        public void ClearDatabaseConfigCache(Guid easymartID)
         {
-            _databaseConfigCache.TryRemove(easyMartID, out _);
+            _databaseConfigCache.TryRemove(easymartID, out _);
         }
 
         /// <summary>
@@ -93,19 +93,19 @@ namespace BASE.Service.Core.Database
         /// <summary>
         /// Lấy kết nối MySQL
         /// </summary>
-        /// <param name="easyMartID"></param>
+        /// <param name="easymartID"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public async Task<IDbConnection> GetDBConnectionAsync(Guid easyMartID)
+        public async Task<IDbConnection> GetDBConnectionAsync(Guid easymartID)
         {
             // Nếu là MasterDB
-            if (easyMartID == Constants.MasterDatabaseID)
+            if (easymartID == Constants.MasterEasyMartID)
             {
                 var masterConnectionString = GetMasterConnectionString();
                 return new MySqlConnection(masterConnectionString);
             }
 
-            var dbConfig = await GetDatabaseConfig(easyMartID);
+            var dbConfig = await GetDatabaseConfig(easymartID);
 
             if (dbConfig == null)
             {
@@ -162,12 +162,12 @@ namespace BASE.Service.Core.Database
         /// <summary>
         /// Thực hiện truy vấn dữ liệu từ database sử dụng command text
         /// </summary>
-        public async Task<List<T>> QueryUsingCommandText<T>(Guid easyMartID, string commandText, Dictionary<string, object> param)
+        public async Task<List<T>> QueryUsingCommandText<T>(Guid easymartID, string commandText, Dictionary<string, object> param)
         {
             IDbConnection cnn = null;
             try
             {
-                cnn = await GetDBConnectionAsync(easyMartID);
+                cnn = await GetDBConnectionAsync(easymartID);
                 var dynamicParams = ConvertToDynamicParameters(param);
                 var result = await cnn.QueryAsync<T>(sql: commandText, param: dynamicParams, commandType: CommandType.Text);
                 return result.AsList();
@@ -214,12 +214,12 @@ namespace BASE.Service.Core.Database
         /// <summary>
         /// Thực hiện truy vấn nhiều tập kết quả từ database sử dụng command text
         /// </summary>
-        public async Task<List<List<object>>> QueryMultipleUsingCommandText(Guid easyMartID, string commandText, List<Type> types, Dictionary<string, object> param)
+        public async Task<List<List<object>>> QueryMultipleUsingCommandText(Guid easymartID, string commandText, List<Type> types, Dictionary<string, object> param)
         {
             IDbConnection cnn = null;
             try
             {
-                cnn = await GetDBConnectionAsync(easyMartID);
+                cnn = await GetDBConnectionAsync(easymartID);
                 var dynamicParams = ConvertToDynamicParameters(param);
                 var multi = await cnn.QueryMultipleAsync(sql: commandText, param: dynamicParams, commandType: CommandType.Text);
                 return await ReadMultipleResults(multi, types);
@@ -266,12 +266,12 @@ namespace BASE.Service.Core.Database
         /// <summary>
         /// Thực thi lệnh SQL (INSERT, UPDATE, DELETE) sử dụng command text
         /// </summary>
-        public async Task<bool> ExecuteUsingCommandText(Guid easyMartID, string commandText, Dictionary<string, object> param)
+        public async Task<bool> ExecuteUsingCommandText(Guid easymartID, string commandText, Dictionary<string, object> param)
         {
             IDbConnection cnn = null;
             try
             {
-                cnn = await GetDBConnectionAsync(easyMartID);
+                cnn = await GetDBConnectionAsync(easymartID);
                 var dynamicParams = ConvertToDynamicParameters(param);
                 var rowsAffected = await cnn.ExecuteAsync(sql: commandText, param: dynamicParams, commandType: CommandType.Text);
                 return rowsAffected > 0;
@@ -346,10 +346,10 @@ namespace BASE.Service.Core.Database
         /// Lấy dữ liệu phân trang từ PagingRequest.
         /// Build SQL, thực thi truy vấn và trả về PagingResponse.
         /// </summary>
-        /// <param name="easyMartID">ID của database cần truy vấn.</param>
+        /// <param name="easymartID">ID của database cần truy vấn.</param>
         /// <param name="request">Yêu cầu phân trang, lọc, sắp xếp.</param>
         /// <returns>PagingResponse chứa dữ liệu trang và tổng số bản ghi.</returns>
-        public async Task<PagingResponse> GetDataPaging(Guid easyMartID, PagingRequest request)
+        public async Task<PagingResponse> GetDataPaging(Guid easymartID, PagingRequest request)
         {
             // Build câu SQL và parameters
             var sqlResult = GenerateSqlPaging(request);
@@ -365,7 +365,7 @@ namespace BASE.Service.Core.Database
             };
 
             // Thực thi query multiple
-            var results = await QueryMultipleUsingCommandText(easyMartID, commandText, types, sqlResult.Parameters);
+            var results = await QueryMultipleUsingCommandText(easymartID, commandText, types, sqlResult.Parameters);
 
             // Lấy kết quả từ 2 result set
             var pageData = results[0];
@@ -620,12 +620,12 @@ namespace BASE.Service.Core.Database
         /// <summary>
         /// Thực hiện truy vấn dữ liệu từ database sử dụng stored procedure
         /// </summary>
-        public async Task<List<T>> QueryUsingStoreProcedure<T>(Guid easyMartID, string procedureName, Dictionary<string, object> param)
+        public async Task<List<T>> QueryUsingStoreProcedure<T>(Guid easymartID, string procedureName, Dictionary<string, object> param)
         {
             IDbConnection cnn = null;
             try
             {
-                cnn = await GetDBConnectionAsync(easyMartID);
+                cnn = await GetDBConnectionAsync(easymartID);
                 var dynamicParams = ConvertToDynamicParameters(param);
                 var result = await cnn.QueryAsync<T>(sql: procedureName, param: dynamicParams, commandType: CommandType.StoredProcedure);
                 return result.AsList();
@@ -672,12 +672,12 @@ namespace BASE.Service.Core.Database
         /// <summary>
         /// Thực thi stored procedure (INSERT, UPDATE, DELETE)
         /// </summary>
-        public async Task<bool> ExecuteUsingStoreProcedure(Guid easyMartID, string procedureName, Dictionary<string, object> param)
+        public async Task<bool> ExecuteUsingStoreProcedure(Guid easymartID, string procedureName, Dictionary<string, object> param)
         {
             IDbConnection cnn = null;
             try
             {
-                cnn = await GetDBConnectionAsync(easyMartID);
+                cnn = await GetDBConnectionAsync(easymartID);
                 var dynamicParams = ConvertToDynamicParameters(param);
                 var rowsAffected = await cnn.ExecuteAsync(sql: procedureName, param: dynamicParams, commandType: CommandType.StoredProcedure);
                 return rowsAffected > 0;
@@ -724,12 +724,12 @@ namespace BASE.Service.Core.Database
         /// <summary>
         /// Thực hiện truy vấn nhiều tập kết quả từ database sử dụng stored procedure
         /// </summary>
-        public async Task<List<List<object>>> QueryMultipleUsingStoreProcedure(Guid easyMartID, string procedureName, List<Type> types, Dictionary<string, object> param)
+        public async Task<List<List<object>>> QueryMultipleUsingStoreProcedure(Guid easymartID, string procedureName, List<Type> types, Dictionary<string, object> param)
         {
             IDbConnection cnn = null;
             try
             {
-                cnn = await GetDBConnectionAsync(easyMartID);
+                cnn = await GetDBConnectionAsync(easymartID);
                 var dynamicParams = ConvertToDynamicParameters(param);
                 var multi = await cnn.QueryMultipleAsync(sql: procedureName, param: dynamicParams, commandType: CommandType.StoredProcedure);
                 return await ReadMultipleResults(multi, types);
@@ -778,42 +778,42 @@ namespace BASE.Service.Core.Database
         /// <summary>
         /// Lấy theo ID
         /// </summary>
-        public async Task<object?> GetDataByID(Guid easyMartID, Type modelType, string id, string columns = "*")
+        public async Task<object?> GetDataByID(Guid easymartID, Type modelType, string id, string columns = "*")
         {
             var param = new Dictionary<string, object>() 
             {
                 { "IDValue", id }
             };
             var sql = GenerateSelectByID(modelType, id, columns);
-            var result = await QueryUsingCommandText<object>(easyMartID, sql, param);
+            var result = await QueryUsingCommandText<object>(easymartID, sql, param);
             return result.Count > 0 ? result.First() : null;
         }
 
         /// <summary>
         /// Lấy theo ID
         /// </summary>
-        public async Task<object> GetDataByID(Guid easyMartID, Type modelType, string id)
+        public async Task<object> GetDataByID(Guid easymartID, Type modelType, string id)
         {
             var param = new Dictionary<string, object>()
             {
                 { "IDValue", id }
             };
             var sql = GenerateSelectByID(modelType, id);
-            var result = await QueryUsingCommandText<object>(easyMartID, sql, param);
+            var result = await QueryUsingCommandText<object>(easymartID, sql, param);
             return result.Count > 0 ? result.First() : null;
         }
 
         /// <summary>
         /// Lấy bản ghi theo ID
         /// </summary>
-        public async Task<T> GetDataByID<T>(Guid easyMartID, string id) where T : BaseModel
+        public async Task<T> GetDataByID<T>(Guid easymartID, string id) where T : BaseModel
         {
             var param = new Dictionary<string, object>()
             {
                 { "IDValue", id }
             };
             var sql = GenerateSelectByID(typeof(T), id);
-            var result = await QueryUsingCommandText<T>(easyMartID, sql, param);
+            var result = await QueryUsingCommandText<T>(easymartID, sql, param);
             return result.Count > 0 ? result.First() : null;
         }
         #endregion

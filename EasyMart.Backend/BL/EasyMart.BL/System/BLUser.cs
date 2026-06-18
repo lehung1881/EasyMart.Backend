@@ -42,9 +42,9 @@ namespace EasyMart.BL.System
         /// <summary>
         /// Hàm gốc chọc vào Database lấy dữ liệu (Chỉ bị gọi khi hụt cache)
         /// </summary>
-        private async Task<List<SysMscPermissionMapping>> BaseGetPermissionFromDbAsync(Guid easyMartID, Guid userID)
+        private async Task<List<SysMscPermissionMapping>> BaseGetPermissionFromDbAsync(Guid easymartID, Guid userID)
         {
-            return await DLObject.BaseGetPermissionFromDbAsync(easyMartID, userID);
+            return await DLObject.BaseGetPermissionFromDbAsync(easymartID, userID);
         }
     }
 }

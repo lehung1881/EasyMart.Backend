@@ -8,14 +8,14 @@ namespace BASE.Service.Core.Services
         /// <summary>
         /// Lấy connection string
         /// </summary>
-        /// <param name="easyMartID"></param>
+        /// <param name="easymartID"></param>
         /// <returns></returns>
-        Task<IDbConnection> GetDBConnectionAsync(Guid easyMartID);
+        Task<IDbConnection> GetDBConnectionAsync(Guid easymartID);
 
         /// <summary>
         /// Thực hiện truy vấn dữ liệu từ database sử dụng command text
         /// </summary>
-        Task<List<T>> QueryUsingCommandText<T>(Guid easyMartID, string commandText, Dictionary<string, object> param);
+        Task<List<T>> QueryUsingCommandText<T>(Guid easymartID, string commandText, Dictionary<string, object> param);
 
         /// <summary>
         /// Thực hiện truy vấn dữ liệu từ database sử dụng command text với connection có sẵn
@@ -25,7 +25,7 @@ namespace BASE.Service.Core.Services
         /// <summary>
         /// Thực thi lệnh SQL (INSERT, UPDATE, DELETE) sử dụng command text
         /// </summary>
-        Task<bool> ExecuteUsingCommandText(Guid easyMartID, string commandText, Dictionary<string, object> param);
+        Task<bool> ExecuteUsingCommandText(Guid easymartID, string commandText, Dictionary<string, object> param);
 
         /// <summary>
         /// Thực thi lệnh SQL (INSERT, UPDATE, DELETE) sử dụng command text với connection có sẵn
@@ -41,7 +41,7 @@ namespace BASE.Service.Core.Services
         /// <summary>
         /// Thực hiện truy vấn nhiều tập kết quả từ database sử dụng command text
         /// </summary>
-        Task<List<List<object>>> QueryMultipleUsingCommandText(Guid easyMartID, string commandText, List<Type> types, Dictionary<string, object> param);
+        Task<List<List<object>>> QueryMultipleUsingCommandText(Guid easymartID, string commandText, List<Type> types, Dictionary<string, object> param);
 
         /// <summary>
         /// Thực hiện truy vấn nhiều tập kết quả từ database sử dụng command text với connection có sẵn
@@ -51,7 +51,7 @@ namespace BASE.Service.Core.Services
         /// <summary>
         /// Thực hiện truy vấn dữ liệu từ database sử dụng stored procedure
         /// </summary>
-        Task<List<T>> QueryUsingStoreProcedure<T>(Guid easyMartID, string procedureName, Dictionary<string, object> param);
+        Task<List<T>> QueryUsingStoreProcedure<T>(Guid easymartID, string procedureName, Dictionary<string, object> param);
 
         /// <summary>
         /// Thực hiện truy vấn dữ liệu từ database sử dụng stored procedure với connection có sẵn
@@ -61,7 +61,7 @@ namespace BASE.Service.Core.Services
         /// <summary>
         /// Thực thi stored procedure (INSERT, UPDATE, DELETE)
         /// </summary>
-        Task<bool> ExecuteUsingStoreProcedure(Guid easyMartID, string procedureName, Dictionary<string, object> param);
+        Task<bool> ExecuteUsingStoreProcedure(Guid easymartID, string procedureName, Dictionary<string, object> param);
 
         /// <summary>
         /// Thực thi stored procedure (INSERT, UPDATE, DELETE) với connection có sẵn
@@ -71,7 +71,7 @@ namespace BASE.Service.Core.Services
         /// <summary>
         /// Thực hiện truy vấn nhiều tập kết quả từ database sử dụng stored procedure
         /// </summary>
-        Task<List<List<object>>> QueryMultipleUsingStoreProcedure(Guid easyMartID, string procedureName, List<Type> types, Dictionary<string, object> param);
+        Task<List<List<object>>> QueryMultipleUsingStoreProcedure(Guid easymartID, string procedureName, List<Type> types, Dictionary<string, object> param);
 
         /// <summary>
         /// Thực hiện truy vấn nhiều tập kết quả từ database sử dụng stored procedure với connection có sẵn
@@ -81,17 +81,17 @@ namespace BASE.Service.Core.Services
         /// <summary>
         /// Lấy theo ID
         /// </summary>
-        Task<object> GetDataByID(Guid easyMartID, Type modelType, string id, string columns = "*");
+        Task<object> GetDataByID(Guid easymartID, Type modelType, string id, string columns = "*");
 
         /// <summary>
         /// Lấy theo ID
         /// </summary>
-        Task<object> GetDataByID(Guid easyMartID, Type modelType, string id);
+        Task<object> GetDataByID(Guid easymartID, Type modelType, string id);
 
         /// <summary>
         /// Lấy theo ID
         /// </summary>
-        Task<T> GetDataByID<T>(Guid easyMartID, string id) where T : BaseModel;
+        Task<T> GetDataByID<T>(Guid easymartID, string id) where T : BaseModel;
 
         /// <summary>
         /// Lấy dữ liệu phân trang từ PagingRequest.
@@ -99,6 +99,6 @@ namespace BASE.Service.Core.Services
         /// </summary>
         /// <param name="request">Yêu cầu phân trang, lọc, sắp xếp.</param>
         /// <returns>PagingResponse chứa dữ liệu trang và tổng số bản ghi.</returns>
-        Task<PagingResponse> GetDataPaging(Guid easyMartID, PagingRequest request);
+        Task<PagingResponse> GetDataPaging(Guid easymartID, PagingRequest request);
     }
 }

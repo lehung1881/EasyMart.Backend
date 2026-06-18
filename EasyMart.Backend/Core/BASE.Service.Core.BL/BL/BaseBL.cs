@@ -75,7 +75,7 @@ namespace BASE.Service.Core.BL
         private Guid _easyMartID = Guid.Empty;
 
         /// <summary>
-        /// ID của tenant hiện tại, lấy từ header "X-EasyMartID".
+        /// ID của Easymart hiện tại, lấy từ header "X-EasyMartID".
         /// Được khởi tạo lazy: chỉ gọi AuthService một lần, các lần sau lấy từ cache.
         /// </summary>
         protected Guid EasyMartID
@@ -111,9 +111,17 @@ namespace BASE.Service.Core.BL
         #endregion
 
         #region Public Methods
+        /// <summary>
+        /// Set giá trị cho _easyMartID
+        /// </summary>
+        /// <param name="easymartID"></param>
+        public void SetEasyMartID(Guid easymartID)
+        {
+            _easyMartID = easymartID;
+        }
 
         /// <summary>
-        /// Lấy connection theo easyMartID (customer DB)
+        /// Lấy connection theo easymartID (customer DB)
         /// </summary>
         protected virtual async Task<IDbConnection> GetConnectionAsync()
         {

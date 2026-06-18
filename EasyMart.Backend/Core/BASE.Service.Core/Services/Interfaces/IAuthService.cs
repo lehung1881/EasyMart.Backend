@@ -21,7 +21,7 @@ namespace BASE.Service.Core.Services
         /// Lấy EasyMartID từ header "X-EasyMartID" trong HTTP request hiện tại.
         /// </summary>
         /// <returns>
-        /// Trả về Guid đại diện cho ID tenant nếu tồn tại,
+        /// Trả về Guid đại diện cho ID Easymart nếu tồn tại,
         /// ngược lại trả về Guid.Empty.
         /// </returns>
         Guid GetEasyMartID();

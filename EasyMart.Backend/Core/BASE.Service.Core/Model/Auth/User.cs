@@ -107,11 +107,6 @@ namespace BASE.Service.Core.Model
         public Guid UserID { get; set; }
 
         /// <summary>
-        /// Dữ liệu của người dùng
-        /// </summary>
-        public Guid easyMartID { get; set; }
-
-        /// <summary>
         /// Địa chỉ email của User.
         /// </summary>
         public string Email { get; set; } = string.Empty;

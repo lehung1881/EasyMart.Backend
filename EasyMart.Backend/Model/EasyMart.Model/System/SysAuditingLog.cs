@@ -63,7 +63,7 @@ namespace EasyMart.Model.System
         public string IPAddress { get; set; }
 
         /// <summary>
-        /// ID công ty (Tenant)
+        /// ID công ty (EasyMart)
         /// </summary>
         public Guid EasyMartID { get; set; }
     }

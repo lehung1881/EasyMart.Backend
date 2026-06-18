@@ -28,7 +28,7 @@
         /// <summary>
         /// Tên công ty / tổ chức.
         /// </summary>
-        public string TenantName { get; set; } = string.Empty;
+        public string EasyMartName { get; set; } = string.Empty;
 
         /// <summary>
         /// Mã số thuế của công ty / tổ chức.

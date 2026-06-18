@@ -7,8 +7,8 @@ using System.Data;
 namespace EasyMart.DL.Auth
 {
     /// <summary>
-    /// Data Layer xử lý các thao tác liên quan đến xác thực (Authentication).
-    /// Bao gồm: quản lý thông tin User, Refresh Token, Tenant, TenantUser và TenantDatabase.
+    /// Data Layer xử lý các thao tác liên quan đến xác thực (Authentication) và định danh Đơn vị.
+    /// Bao gồm: quản lý thông tin User, User Refresh Token, EasyMart, EasyMartAssignment và EasyMartDbConfig.
     /// </summary>
     public class DLAuth : DLBaseEasyMart
     {
@@ -40,7 +40,7 @@ namespace EasyMart.DL.Auth
                 { "@Email", email }
             };
 
-            var result = await _databaseService.QueryUsingCommandText<User>(Constants.MasterDatabaseID, sql, parameters);
+            var result = await _databaseService.QueryUsingCommandText<User>(Constants.MasterEasyMartID, sql, parameters);
             return result?.Count > 0;
         }
 
@@ -60,13 +60,13 @@ namespace EasyMart.DL.Auth
                 { "@Email", email }
             };
 
-            var result = await _databaseService.QueryUsingCommandText<User>(Constants.MasterDatabaseID, sql, parameters);
+            var result = await _databaseService.QueryUsingCommandText<User>(Constants.MasterEasyMartID, sql, parameters);
             return result?.FirstOrDefault();
         }
 
         /// <summary>
         /// Lấy thông tin <see cref="UserInfo"/> theo <paramref name="userID"/>
-        /// bằng cách join bảng <c>user</c>, <c>tenant_user</c> và <c>tenant</c>.
+        /// bằng cách kết hợp bảng <c>user</c>, <c>user_easymart_assignment</c> và <c>easymart</c>.
         /// </summary>
         /// <param name="userID">Định danh duy nhất của người dùng cần truy vấn.</param>
         /// <returns>
@@ -77,17 +77,16 @@ namespace EasyMart.DL.Auth
             var sql = @"
                 SELECT 
                     u.UserID,
-                    ut.DatabaseID,
                     u.Email,
                     u.FullName,
                     u.AvatarUrl,
                     u.PhoneNumber,
-                    t.EasyMartID,
-                    t.EasyMartCode,
-                    t.EasyMartName
+                    em.EasyMartID,
+                    em.EasyMartCode,
+                    em.EasyMartName
                 FROM user u
-                LEFT JOIN tenant_user ut ON u.UserID = ut.UserID
-                LEFT JOIN tenant t ON ut.EasyMartID = t.EasyMartID
+                LEFT JOIN user_easymart_assignment uema ON u.UserID = uema.UserID
+                LEFT JOIN easymart em ON uema.EasyMartID = em.EasyMartID
                 WHERE u.UserID = @UserID
                   AND u.IsDeleted = 0
                 LIMIT 1";
@@ -97,7 +96,7 @@ namespace EasyMart.DL.Auth
                 { "@UserID", userID }
             };
 
-            var result = await _databaseService.QueryUsingCommandText<UserInfo>(Constants.MasterDatabaseID, sql, parameters);
+            var result = await _databaseService.QueryUsingCommandText<UserInfo>(Constants.MasterEasyMartID, sql, parameters);
             return result?.FirstOrDefault();
         }
 
@@ -113,10 +112,10 @@ namespace EasyMart.DL.Auth
             var sql = @"
                 INSERT INTO user
                     (UserID, Email, FullName, PasswordHash, PhoneNumber,
-                     IsActive, IsLocked, FailedLoginCount, IsEmailVerified, IsDeleted)
+                     IsActive, IsLocked, FailedLoginCount, IsEmailVerified, IsDeleted, CreatedDate)
                 VALUES
                     (@UserID, @Email, @FullName, @PasswordHash, @PhoneNumber,
-                     @IsActive, @IsLocked, @FailedLoginCount, @IsEmailVerified, @IsDeleted)";
+                     @IsActive, @IsLocked, @FailedLoginCount, @IsEmailVerified, @IsDeleted, @CreatedDate)";
 
             var parameters = new Dictionary<string, object>
             {
@@ -130,16 +129,14 @@ namespace EasyMart.DL.Auth
                 { "@FailedLoginCount", user.FailedLoginCount },
                 { "@IsEmailVerified",  user.IsEmailVerified },
                 { "@IsDeleted",        user.IsDeleted },
+                { "@CreatedDate",      DateTime.Now }
             };
 
             return await _databaseService.ExecuteUsingCommandText(cnn, tran, sql, parameters);
         }
 
         /// <summary>
-        /// Cập nhật thông tin xác thực của User bao gồm:
-        /// số lần đăng nhập sai (<see cref="User.FailedLoginCount"/>),
-        /// trạng thái khóa (<see cref="User.IsLocked"/>),
-        /// và trạng thái kích hoạt (<see cref="User.IsActive"/>).
+        /// Cập nhật thông tin xác thực bảo mật của User.
         /// </summary>
         /// <param name="user">Đối tượng User chứa thông tin cần cập nhật.</param>
         /// <returns><c>true</c> nếu cập nhật thành công; <c>false</c> nếu thất bại.</returns>
@@ -149,7 +146,8 @@ namespace EasyMart.DL.Auth
                 UPDATE user SET
                     FailedLoginCount = @FailedLoginCount,
                     IsLocked         = @IsLocked,
-                    IsActive         = @IsActive
+                    IsActive         = @IsActive,
+                    ModifiedDate     = @ModifiedDate
                 WHERE UserID = @UserID";
 
             var parameters = new Dictionary<string, object>
@@ -158,9 +156,10 @@ namespace EasyMart.DL.Auth
                 { "@FailedLoginCount", user.FailedLoginCount },
                 { "@IsLocked",         user.IsLocked },
                 { "@IsActive",         user.IsActive },
+                { "@ModifiedDate",     DateTime.Now }
             };
 
-            return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, sql, parameters);
+            return await _databaseService.ExecuteUsingCommandText(Constants.MasterEasyMartID, sql, parameters);
         }
 
         #endregion
@@ -168,18 +167,14 @@ namespace EasyMart.DL.Auth
         #region Refresh Token
 
         /// <summary>
-        /// Lấy thông tin Refresh Token từ database để xác thực.
-        /// Chỉ trả về token còn hiệu lực (chưa bị thu hồi).
+        /// Lấy thông tin Refresh Token hoạt động từ database để xác thực.
         /// </summary>
         /// <param name="token">Chuỗi Refresh Token cần tìm kiếm.</param>
-        /// <returns>
-        /// Đối tượng <see cref="RefreshToken"/> nếu token hợp lệ và chưa bị thu hồi;
-        /// <c>null</c> nếu không tìm thấy hoặc đã bị thu hồi.
-        /// </returns>
-        public async Task<RefreshToken> GetRefreshTokenAsync(string token)
+        /// <returns>Đối tượng <see cref="UserRefreshToken"/> nếu hợp lệ; ngược lại trả về <c>null</c>.</returns>
+        public async Task<UserRefreshToken> GetRefreshTokenAsync(string token)
         {
             var sql = @"
-                SELECT * FROM refresh_token 
+                SELECT * FROM user_refresh_token 
                 WHERE Token = @Token AND IsRevoked = 0 
                 LIMIT 1";
 
@@ -188,23 +183,19 @@ namespace EasyMart.DL.Auth
                 { "@Token", token }
             };
 
-            var result = await _databaseService.QueryUsingCommandText<RefreshToken>(Constants.MasterDatabaseID, sql, parameters);
+            var result = await _databaseService.QueryUsingCommandText<UserRefreshToken>(Constants.MasterEasyMartID, sql, parameters);
             return result?.FirstOrDefault();
         }
 
         /// <summary>
-        /// Kiểm tra Refresh Token có hợp lệ và chưa hết hạn không.
-        /// Chỉ trả về token còn hiệu lực (chưa bị thu hồi và chưa hết hạn).
+        /// Kiểm tra Refresh Token còn hiệu lực và chưa hết hạn.
         /// </summary>
         /// <param name="token">Chuỗi Refresh Token cần kiểm tra.</param>
-        /// <returns>
-        /// Đối tượng <see cref="RefreshToken"/> nếu hợp lệ;
-        /// <c>null</c> nếu không tìm thấy, đã bị thu hồi hoặc đã hết hạn.
-        /// </returns>
-        public async Task<RefreshToken> GetValidRefreshTokenAsync(string token)
+        /// <returns>Đối tượng <see cref="UserRefreshToken"/> nếu hợp lệ; ngược lại trả về <c>null</c>.</returns>
+        public async Task<UserRefreshToken> GetValidRefreshTokenAsync(string token)
         {
             var sql = @"
-                SELECT * FROM refresh_token 
+                SELECT * FROM user_refresh_token 
                 WHERE Token = @Token 
                   AND IsRevoked = 0 
                   AND ExpiresDate > @Now
@@ -216,37 +207,31 @@ namespace EasyMart.DL.Auth
                 { "@Now",   DateTime.Now },
             };
 
-            var result = await _databaseService.QueryUsingCommandText<RefreshToken>(Constants.MasterDatabaseID, sql, parameters);
+            var result = await _databaseService.QueryUsingCommandText<UserRefreshToken>(Constants.MasterEasyMartID, sql, parameters);
             return result?.FirstOrDefault();
         }
 
         /// <summary>
-        /// Lưu Refresh Token mới vào database.
-        /// Trước khi lưu, tất cả Refresh Token cũ còn hiệu lực của User sẽ bị thu hồi
-        /// để đảm bảo mỗi User chỉ có một Refresh Token hợp lệ tại một thời điểm.
+        /// Lưu Refresh Token mới. Đồng thời thu hồi tất cả các token cũ của User đó.
         /// </summary>
-        /// <param name="userID">ID của User sở hữu Refresh Token.</param>
-        /// <param name="token">Chuỗi Refresh Token cần lưu.</param>
-        /// <param name="expiresDate">Thời điểm hết hạn của Refresh Token.</param>
-        /// <returns><c>true</c> nếu lưu thành công; <c>false</c> nếu thất bại.</returns>
         public async Task<bool> SaveRefreshTokenAsync(Guid userID, string token, DateTime expiresDate)
         {
-            // Thu hồi tất cả Refresh Token cũ còn hiệu lực của User
+            // Thu hồi tất cả Refresh Token cũ đang kích hoạt của User này
             var revokeOldSql = @"
-                UPDATE refresh_token 
+                UPDATE user_refresh_token 
                 SET IsRevoked   = 1,
                     RevokedDate = @RevokedDate
                 WHERE UserID = @UserID AND IsRevoked = 0";
 
-            await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, revokeOldSql, new Dictionary<string, object>
+            await _databaseService.ExecuteUsingCommandText(Constants.MasterEasyMartID, revokeOldSql, new Dictionary<string, object>
             {
                 { "@UserID",      userID },
                 { "@RevokedDate", DateTime.Now },
             });
 
-            // Chèn Refresh Token mới vào database
+            // Chèn mã Refresh Token mới
             var insertSql = @"
-                INSERT INTO refresh_token (RefreshTokenID, UserID, Token, ExpiresDate, IsRevoked, CreatedDate)
+                INSERT INTO user_refresh_token (RefreshTokenID, UserID, Token, ExpiresDate, IsRevoked, CreatedDate)
                 VALUES (@RefreshTokenID, @UserID, @Token, @ExpiresDate, 0, @CreatedDate)";
 
             var parameters = new Dictionary<string, object>
@@ -258,19 +243,16 @@ namespace EasyMart.DL.Auth
                 { "@CreatedDate",    DateTime.Now },
             };
 
-            return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, insertSql, parameters);
+            return await _databaseService.ExecuteUsingCommandText(Constants.MasterEasyMartID, insertSql, parameters);
         }
 
         /// <summary>
-        /// Thu hồi Refresh Token, thường được gọi khi User đăng xuất
-        /// hoặc khi cấp phát Refresh Token mới (token rotation).
+        /// Thu hồi Token cụ thể khi Logout hoặc áp dụng quy trình xoay vòng token.
         /// </summary>
-        /// <param name="token">Chuỗi Refresh Token cần thu hồi.</param>
-        /// <returns><c>true</c> nếu thu hồi thành công; <c>false</c> nếu thất bại.</returns>
         public async Task<bool> RevokeRefreshTokenAsync(string token)
         {
             var sql = @"
-                UPDATE refresh_token 
+                UPDATE user_refresh_token 
                 SET IsRevoked   = 1,
                     RevokedDate = @RevokedDate
                 WHERE Token = @Token";
@@ -281,24 +263,20 @@ namespace EasyMart.DL.Auth
                 { "@RevokedDate", DateTime.Now },
             };
 
-            return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, sql, parameters);
+            return await _databaseService.ExecuteUsingCommandText(Constants.MasterEasyMartID, sql, parameters);
         }
 
         #endregion
 
-        #region Tenant
+        #region EasyMart (EasyMart)
 
         /// <summary>
-        /// Lưu thông tin Tenant mới vào database trong một transaction có sẵn.
+        /// Lưu thông tin Siêu thị/Đơn vị mới vào database trong một transaction có sẵn.
         /// </summary>
-        /// <param name="tenant">Đối tượng Tenant cần lưu.</param>
-        /// <param name="cnn">Connection đang mở.</param>
-        /// <param name="tran">Transaction đang hoạt động.</param>
-        /// <returns><c>true</c> nếu lưu thành công; <c>false</c> nếu thất bại.</returns>
-        public async Task<bool> SaveTenantAsync(Tenant tenant, IDbConnection cnn, IDbTransaction tran)
+        public async Task<bool> SaveEasyMartAsync(EasyMartEntity easyMart, IDbConnection cnn, IDbTransaction tran)
         {
             var sql = @"
-                INSERT INTO tenant 
+                INSERT INTO easymart 
                     (EasyMartID, EasyMartCode, EasyMartName, ContactEmail, ContactPhone,
                      IsActive, ExpiredDate, CreatedDate, IsDeleted)
                 VALUES 
@@ -307,15 +285,15 @@ namespace EasyMart.DL.Auth
 
             var parameters = new Dictionary<string, object>
             {
-                { "@EasyMartID",     tenant.EasyMartID },
-                { "@EasyMartCode",   tenant.EasyMartCode },
-                { "@EasyMartName",   tenant.EasyMartName },
-                { "@ContactEmail", tenant.ContactEmail ?? (object)DBNull.Value },
-                { "@ContactPhone", tenant.ContactPhone ?? (object)DBNull.Value },
-                { "@IsActive",     tenant.IsActive },
-                { "@ExpiredDate",  tenant.ExpiredDate ?? (object)DBNull.Value },
-                { "@CreatedDate",  tenant.CreatedDate },
-                { "@IsDeleted",    tenant.IsDeleted },
+                { "@EasyMartID",   easyMart.EasyMartID },
+                { "@EasyMartCode", easyMart.EasyMartCode },
+                { "@EasyMartName", easyMart.EasyMartName },
+                { "@ContactEmail", easyMart.ContactEmail ?? (object)DBNull.Value },
+                { "@ContactPhone", easyMart.ContactPhone ?? (object)DBNull.Value },
+                { "@IsActive",     easyMart.IsActive },
+                { "@ExpiredDate",  easyMart.ExpiredDate ?? (object)DBNull.Value },
+                { "@CreatedDate",  easyMart.CreatedDate },
+                { "@IsDeleted",    easyMart.IsDeleted },
             };
 
             return await _databaseService.ExecuteUsingCommandText(cnn, tran, sql, parameters);
@@ -323,26 +301,20 @@ namespace EasyMart.DL.Auth
 
         #endregion
 
-        #region Tenant User
+        #region EasyMart Assignment (EasyMart User)
 
         /// <summary>
-        /// Tạo liên kết giữa User và Tenant trong bảng tenant_user trong một transaction có sẵn.
+        /// Tạo liên kết phân công giữa User và Siêu thị (Mối quan hệ N-N) trong một transaction có sẵn.
         /// </summary>
-        /// <param name="easyMartID">ID của Tenant.</param>
-        /// <param name="userID">ID của User.</param>
-        /// <param name="cnn">Connection đang mở.</param>
-        /// <param name="tran">Transaction đang hoạt động.</param>
-        /// <returns><c>true</c> nếu lưu thành công; <c>false</c> nếu thất bại.</returns>
-        public async Task<bool> SaveTenantUserAsync(Guid easyMartID, Guid userID, IDbConnection cnn, IDbTransaction tran)
+        public async Task<bool> SaveEasyMartAssignmentAsync(Guid easymartID, Guid userID, IDbConnection cnn, IDbTransaction tran)
         {
             var sql = @"
-                INSERT INTO tenant_user (TenantUserID, EasyMartID, UserID, AssignedDate)
-                VALUES (@TenantUserID, @EasyMartID, @UserID, @AssignedDate)";
+                INSERT INTO user_easymart_assignment (EasyMartID, UserID, AssignedDate)
+                VALUES (@EasyMartID, @UserID, @AssignedDate)";
 
             var parameters = new Dictionary<string, object>
             {
-                { "@TenantUserID", Guid.NewGuid() },
-                { "@EasyMartID",     easyMartID },
+                { "@EasyMartID",   easymartID },
                 { "@UserID",       userID },
                 { "@AssignedDate", DateTime.Now },
             };
@@ -351,62 +323,55 @@ namespace EasyMart.DL.Auth
         }
 
         /// <summary>
-        /// Xóa toàn bộ dữ liệu liên quan đến một lần đăng ký thất bại.
-        /// Thứ tự xóa: tenant_user → tenant → user (theo chiều FK).
+        /// Xóa toàn bộ dữ liệu liên quan đến một lần đăng ký bị lỗi để dọn dẹp hệ thống.
+        /// Xóa theo thứ tự đảm bảo toàn vẹn: u_em_assignment → easymart → user.
         /// </summary>
-        /// <param name="userID">ID của User cần xóa.</param>
-        /// <param name="easyMartID">ID của Tenant cần xóa.</param>
-        /// <returns><c>true</c> nếu xóa thành công toàn bộ; <c>false</c> nếu có bước thất bại.</returns>
-        public async Task<bool> ClearInfoRegisterErrorAsync(Guid userID, Guid easyMartID)
+        public async Task<bool> ClearInfoRegisterErrorAsync(Guid userID, Guid easymartID)
         {
             var sql = @"
-                DELETE FROM tenant_user WHERE UserID   = @UserID;
-                DELETE FROM tenant      WHERE EasyMartID = @EasyMartID;
-                DELETE FROM user        WHERE UserID   = @UserID;";
+                DELETE FROM user_easymart_assignment WHERE UserID   = @UserID;
+                DELETE FROM easymart                  WHERE EasyMartID = @EasyMartID;
+                DELETE FROM user                       WHERE UserID   = @UserID;";
 
             var parameters = new Dictionary<string, object>
             {
-                { "@UserID",   userID },
-                { "@EasyMartID", easyMartID },
+                { "@UserID",     userID },
+                { "@EasyMartID", easymartID },
             };
 
-            return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, sql, parameters);
+            return await _databaseService.ExecuteUsingCommandText(Constants.MasterEasyMartID, sql, parameters);
         }
 
         #endregion
 
-        #region Tenant Database
+        #region EasyMart DB Config (EasyMart Database)
 
         /// <summary>
-        /// Lưu thông tin kết nối database mới vào bảng tenant_database.
+        /// Lưu cấu hình thông tin kết nối database riêng độc lập của một Siêu thị.
+        /// Lưu ý: Cột DbConfigID là trường AUTO_INCREMENT nên không cần đưa vào câu INSERT.
         /// </summary>
-        /// <param name="tenantDatabase">Đối tượng TenantDatabase cần lưu.</param>
-        /// <returns><c>true</c> nếu lưu thành công; <c>false</c> nếu thất bại.</returns>
-        public async Task<bool> SaveTenantDatabaseAsync(TenantDatabase tenantDatabase)
+        public async Task<bool> SaveEasyMartDbConfigAsync(EasyMartDbConfig dbConfig)
         {
             var sql = @"
-                INSERT INTO tenant_database 
-                    (DatabaseID, EasyMartID, Server, Port, `Database`, UserID, Password,
-                     VersionDB, Status, CreatedDate)
+                INSERT INTO easymart_db_config 
+                    (EasyMartID, Server, Port, `Database`, UserID, Password, VersionDB, Status, CreatedDate)
                 VALUES 
-                    (@DatabaseID, @EasyMartID, @Server, @Port, @Database, @UserID, @Password,
-                     @VersionDB, @Status, @CreatedDate)";
+                    (@EasyMartID, @Server, @Port, @Database, @UserID, @Password, @VersionDB, @Status, @CreatedDate)";
 
             var parameters = new Dictionary<string, object>
             {
-                { "@DatabaseID",  tenantDatabase.DatabaseID },
-                { "@EasyMartID",    tenantDatabase.EasyMartID },
-                { "@Server",      tenantDatabase.Server },
-                { "@Port",        tenantDatabase.Port },
-                { "@Database",    tenantDatabase.Database },
-                { "@UserID",      tenantDatabase.UserID },
-                { "@Password",    tenantDatabase.Password },
-                { "@VersionDB",   tenantDatabase.VersionDB },
-                { "@Status",      tenantDatabase.Status },
-                { "@CreatedDate", DateTime.Now },
+                { "@EasyMartID",   dbConfig.EasyMartID },
+                { "@Server",       dbConfig.Server },
+                { "@Port",         dbConfig.Port },
+                { "@Database",     dbConfig.Database },
+                { "@UserID",       dbConfig.UserID },
+                { "@Password",     dbConfig.Password },
+                { "@VersionDB",    dbConfig.VersionDB },
+                { "@Status",       dbConfig.Status },
+                { "@CreatedDate",  DateTime.Now },
             };
 
-            return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, sql, parameters);
+            return await _databaseService.ExecuteUsingCommandText(Constants.MasterEasyMartID, sql, parameters);
         }
 
         #endregion

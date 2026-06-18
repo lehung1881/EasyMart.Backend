@@ -3,27 +3,31 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BASE.Service.Core.Model
 {
-    [ConfigTable("tenant", "")]
-    public class Tenant : BaseModel
+    /// <summary>
+    /// Model thực thể đại diện cho thông tin Siêu thị / Đơn vị thành viên (EasyMart).
+    /// Ánh xạ trực tiếp với bảng "easymart" trong cơ sở dữ liệu.
+    /// </summary>
+    [ConfigTable("easymart", "")]
+    public class EasyMartEntity : BaseModel
     {
         /// <summary>
-        /// Khóa chính
+        /// Khóa chính định danh Siêu thị
         /// </summary>
         [Key]
         public Guid EasyMartID { get; set; }
 
         /// <summary>
-        /// Mã định danh khách hàng (vd: CUST_001)
+        /// Mã định danh siêu thị (Ví dụ: EM_HN01)
         /// </summary>
         public string EasyMartCode { get; set; }
 
         /// <summary>
-        /// Tên khách hàng
+        /// Tên đầy đủ của siêu thị / chi nhánh
         /// </summary>
         public string EasyMartName { get; set; }
 
         /// <summary>
-        /// Email liên hệ
+        /// Email liên hệ chính thức
         /// </summary>
         public string? ContactEmail { get; set; }
 
@@ -33,28 +37,28 @@ namespace BASE.Service.Core.Model
         public string? ContactPhone { get; set; }
 
         /// <summary>
-        /// Trạng thái hoạt động
+        /// Trạng thái hoạt động: 1 - Đang hoạt động, 0 - Tạm dừng kinh doanh
         /// </summary>
-        public bool IsActive { get; set; } = true;
+        public int IsActive { get; set; } = 1;
 
         /// <summary>
-        /// Ngày hết hạn license
+        /// Ngày hết hạn hợp đồng phần mềm / license của siêu thị
         /// </summary>
         public DateTime? ExpiredDate { get; set; }
 
         /// <summary>
-        /// Thời điểm tạo
+        /// Thời điểm khởi tạo bản ghi siêu thị
         /// </summary>
         public DateTime CreatedDate { get; set; }
 
         /// <summary>
-        /// Thời điểm cập nhật
+        /// Thời điểm cập nhật thông tin gần nhất
         /// </summary>
         public DateTime? ModifiedDate { get; set; }
 
         /// <summary>
-        /// Soft delete
+        /// Trạng thái xóa mềm: 1 - Đã xóa, 0 - Chưa xóa
         /// </summary>
-        public bool IsDeleted { get; set; } = false;
+        public int IsDeleted { get; set; } = 0;
     }
 }

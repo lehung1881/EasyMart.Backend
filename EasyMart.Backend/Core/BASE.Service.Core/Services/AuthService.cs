@@ -47,15 +47,15 @@ namespace BASE.Service.Core.Services
         /// Lấy EasyMartID từ header "X-EasyMartID" trong HTTP request hiện tại.
         /// </summary>
         /// <returns>
-        /// Trả về Guid đại diện cho ID tenant nếu tồn tại,
+        /// Trả về Guid đại diện cho ID Easymart nếu tồn tại,
         /// ngược lại trả về Guid.Empty.
         /// </returns>
         public Guid GetEasyMartID()
         {
-            string easyMartID = _httpContext.HttpContext?.Request?.Headers["X-EasyMartID"];
-            if (!string.IsNullOrEmpty(easyMartID))
+            string easymartID = _httpContext.HttpContext?.Request?.Headers["X-EasyMartID"];
+            if (!string.IsNullOrEmpty(easymartID))
             {
-                return Guid.Parse(easyMartID);
+                return Guid.Parse(easymartID);
             }
             return Guid.Empty;
         }

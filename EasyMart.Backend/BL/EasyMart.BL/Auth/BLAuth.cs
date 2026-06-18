@@ -190,9 +190,9 @@ namespace EasyMart.BL.Auth
 
             var newTenant = new Tenant
             {
-                TenantID = Guid.NewGuid(),
-                TenantCode = GenerateTenantCode(),
-                TenantName = request.FullName.Trim(),
+                EasyMartID = Guid.NewGuid(),
+                EasyMartCode = GenerateTenantCode(),
+                EasyMartName = request.FullName.Trim(),
                 ContactEmail = request.Email.Trim().ToLower(),
                 ContactPhone = request.PhoneNumber?.Trim(),
                 IsActive = true,
@@ -226,7 +226,7 @@ namespace EasyMart.BL.Auth
                     }
 
                     var saveTenantUserResult = await DLObject.SaveTenantUserAsync(
-                        newTenant.TenantID,
+                        newTenant.EasyMartID,
                         newUser.UserID,
                         cnn,
                         transaction
@@ -249,10 +249,10 @@ namespace EasyMart.BL.Auth
             }
 
             // Bước 5: Tạo database riêng cho Tenant từ template DB
-            var newDatabaseID = await CreateTenantDatabaseAsync(newTenant.TenantID, newTenant.TenantCode);
+            var newDatabaseID = await CreateEasyMartDatabaseAsync(newTenant.EasyMartID, newTenant.EasyMartCode);
             if (newDatabaseID is null)
             {
-                await ClearInfoRegisterErrorAsync(newUser.UserID, newTenant.TenantID);
+                await ClearInfoRegisterErrorAsync(newUser.UserID, newTenant.EasyMartID);
                 res.OnError(ServiceResponseCode.Exception, "Tạo database cửa hàng thất bại. Vui lòng thử lại");
                 return res;
             }
@@ -273,10 +273,10 @@ namespace EasyMart.BL.Auth
         /// sau đó lưu thông tin kết nối vào bảng tenant_database.
         /// Nếu lưu metadata thất bại, database vừa tạo sẽ bị DROP để tránh dữ liệu rác.
         /// </summary>
-        /// <param name="tenantID">ID của Tenant vừa tạo.</param>
+        /// <param name="easyMartID">ID của Tenant vừa tạo.</param>
         /// <param name="tenantCode">Mã Tenant, dùng để đặt tên database mới.</param>
         /// <returns><see cref="Guid"/> DatabaseID nếu thành công; <c>null</c> nếu thất bại.</returns>
-        private async Task<Guid?> CreateTenantDatabaseAsync(Guid tenantID, string tenantCode)
+        private async Task<Guid?> CreateEasyMartDatabaseAsync(Guid easyMartID, string tenantCode)
         {
             var templateConnStr = GlobalConfig.AppSettings.ConnectionStrings.TemplateDB;
             var masterConnStr = GlobalConfig.AppSettings.ConnectionStrings.MasterDB;
@@ -332,7 +332,7 @@ namespace EasyMart.BL.Auth
                 var tenantDatabase = new TenantDatabase
                 {
                     DatabaseID = Guid.NewGuid(),
-                    TenantID = tenantID,
+                    EasyMartID = easyMartID,
                     Server = builder.Server,
                     Port = (int)builder.Port,
                     Database = newDatabaseName,
@@ -351,7 +351,7 @@ namespace EasyMart.BL.Auth
                     return null;
                 }
 
-                return tenantID;
+                return easyMartID;
             }
             catch (Exception ex)
             {
@@ -424,11 +424,11 @@ namespace EasyMart.BL.Auth
         /// Rollback thủ công khi tạo database thất bại sau khi đã commit user/tenant/tenant_user.
         /// Ủy thác việc xóa xuống DL để đảm bảo đúng thứ tự FK.
         /// </summary>
-        private async Task ClearInfoRegisterErrorAsync(Guid userID, Guid tenantID)
+        private async Task ClearInfoRegisterErrorAsync(Guid userID, Guid easyMartID)
         {
             try
             {
-                await DLObject.ClearInfoRegisterErrorAsync(userID, tenantID);
+                await DLObject.ClearInfoRegisterErrorAsync(userID, easyMartID);
             }
             catch (Exception ex)
             {
@@ -439,7 +439,7 @@ namespace EasyMart.BL.Auth
         }
 
         /// <summary>
-        /// Sinh TenantCode ngẫu nhiên theo định dạng SHOP_xxxxxxxx.
+        /// Sinh EasyMartCode ngẫu nhiên theo định dạng SHOP_xxxxxxxx.
         /// </summary>
         private static string GenerateTenantCode()
         {

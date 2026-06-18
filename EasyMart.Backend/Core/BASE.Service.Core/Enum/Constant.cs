@@ -14,6 +14,6 @@
         public const string Email = "email";
         public const string TokenID = "jti";
         public const string FullName = "full_name";
-        public const string TenantID = "tenant_id";
+        public const string EasyMartID = "tenant_id";
     }
 }

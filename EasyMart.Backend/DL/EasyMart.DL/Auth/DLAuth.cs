@@ -82,12 +82,12 @@ namespace EasyMart.DL.Auth
                     u.FullName,
                     u.AvatarUrl,
                     u.PhoneNumber,
-                    t.TenantID,
-                    t.TenantCode,
-                    t.TenantName
+                    t.EasyMartID,
+                    t.EasyMartCode,
+                    t.EasyMartName
                 FROM user u
                 LEFT JOIN tenant_user ut ON u.UserID = ut.UserID
-                LEFT JOIN tenant t ON ut.TenantID = t.TenantID
+                LEFT JOIN tenant t ON ut.EasyMartID = t.EasyMartID
                 WHERE u.UserID = @UserID
                   AND u.IsDeleted = 0
                 LIMIT 1";
@@ -299,17 +299,17 @@ namespace EasyMart.DL.Auth
         {
             var sql = @"
                 INSERT INTO tenant 
-                    (TenantID, TenantCode, TenantName, ContactEmail, ContactPhone,
+                    (EasyMartID, EasyMartCode, EasyMartName, ContactEmail, ContactPhone,
                      IsActive, ExpiredDate, CreatedDate, IsDeleted)
                 VALUES 
-                    (@TenantID, @TenantCode, @TenantName, @ContactEmail, @ContactPhone,
+                    (@EasyMartID, @EasyMartCode, @EasyMartName, @ContactEmail, @ContactPhone,
                      @IsActive, @ExpiredDate, @CreatedDate, @IsDeleted)";
 
             var parameters = new Dictionary<string, object>
             {
-                { "@TenantID",     tenant.TenantID },
-                { "@TenantCode",   tenant.TenantCode },
-                { "@TenantName",   tenant.TenantName },
+                { "@EasyMartID",     tenant.EasyMartID },
+                { "@EasyMartCode",   tenant.EasyMartCode },
+                { "@EasyMartName",   tenant.EasyMartName },
                 { "@ContactEmail", tenant.ContactEmail ?? (object)DBNull.Value },
                 { "@ContactPhone", tenant.ContactPhone ?? (object)DBNull.Value },
                 { "@IsActive",     tenant.IsActive },
@@ -328,21 +328,21 @@ namespace EasyMart.DL.Auth
         /// <summary>
         /// Tạo liên kết giữa User và Tenant trong bảng tenant_user trong một transaction có sẵn.
         /// </summary>
-        /// <param name="tenantID">ID của Tenant.</param>
+        /// <param name="easyMartID">ID của Tenant.</param>
         /// <param name="userID">ID của User.</param>
         /// <param name="cnn">Connection đang mở.</param>
         /// <param name="tran">Transaction đang hoạt động.</param>
         /// <returns><c>true</c> nếu lưu thành công; <c>false</c> nếu thất bại.</returns>
-        public async Task<bool> SaveTenantUserAsync(Guid tenantID, Guid userID, IDbConnection cnn, IDbTransaction tran)
+        public async Task<bool> SaveTenantUserAsync(Guid easyMartID, Guid userID, IDbConnection cnn, IDbTransaction tran)
         {
             var sql = @"
-                INSERT INTO tenant_user (TenantUserID, TenantID, UserID, AssignedDate)
-                VALUES (@TenantUserID, @TenantID, @UserID, @AssignedDate)";
+                INSERT INTO tenant_user (TenantUserID, EasyMartID, UserID, AssignedDate)
+                VALUES (@TenantUserID, @EasyMartID, @UserID, @AssignedDate)";
 
             var parameters = new Dictionary<string, object>
             {
                 { "@TenantUserID", Guid.NewGuid() },
-                { "@TenantID",     tenantID },
+                { "@EasyMartID",     easyMartID },
                 { "@UserID",       userID },
                 { "@AssignedDate", DateTime.Now },
             };
@@ -355,19 +355,19 @@ namespace EasyMart.DL.Auth
         /// Thứ tự xóa: tenant_user → tenant → user (theo chiều FK).
         /// </summary>
         /// <param name="userID">ID của User cần xóa.</param>
-        /// <param name="tenantID">ID của Tenant cần xóa.</param>
+        /// <param name="easyMartID">ID của Tenant cần xóa.</param>
         /// <returns><c>true</c> nếu xóa thành công toàn bộ; <c>false</c> nếu có bước thất bại.</returns>
-        public async Task<bool> ClearInfoRegisterErrorAsync(Guid userID, Guid tenantID)
+        public async Task<bool> ClearInfoRegisterErrorAsync(Guid userID, Guid easyMartID)
         {
             var sql = @"
                 DELETE FROM tenant_user WHERE UserID   = @UserID;
-                DELETE FROM tenant      WHERE TenantID = @TenantID;
+                DELETE FROM tenant      WHERE EasyMartID = @EasyMartID;
                 DELETE FROM user        WHERE UserID   = @UserID;";
 
             var parameters = new Dictionary<string, object>
             {
                 { "@UserID",   userID },
-                { "@TenantID", tenantID },
+                { "@EasyMartID", easyMartID },
             };
 
             return await _databaseService.ExecuteUsingCommandText(Constants.MasterDatabaseID, sql, parameters);
@@ -386,16 +386,16 @@ namespace EasyMart.DL.Auth
         {
             var sql = @"
                 INSERT INTO tenant_database 
-                    (DatabaseID, TenantID, Server, Port, `Database`, UserID, Password,
+                    (DatabaseID, EasyMartID, Server, Port, `Database`, UserID, Password,
                      VersionDB, Status, CreatedDate)
                 VALUES 
-                    (@DatabaseID, @TenantID, @Server, @Port, @Database, @UserID, @Password,
+                    (@DatabaseID, @EasyMartID, @Server, @Port, @Database, @UserID, @Password,
                      @VersionDB, @Status, @CreatedDate)";
 
             var parameters = new Dictionary<string, object>
             {
                 { "@DatabaseID",  tenantDatabase.DatabaseID },
-                { "@TenantID",    tenantDatabase.TenantID },
+                { "@EasyMartID",    tenantDatabase.EasyMartID },
                 { "@Server",      tenantDatabase.Server },
                 { "@Port",        tenantDatabase.Port },
                 { "@Database",    tenantDatabase.Database },

@@ -18,13 +18,13 @@ namespace BASE.Service.Core.Services
         Guid GetUserID();
 
         /// <summary>
-        /// Lấy TenantID từ header "X-TenantID" trong HTTP request hiện tại.
+        /// Lấy EasyMartID từ header "X-EasyMartID" trong HTTP request hiện tại.
         /// </summary>
         /// <returns>
         /// Trả về Guid đại diện cho ID tenant nếu tồn tại,
         /// ngược lại trả về Guid.Empty.
         /// </returns>
-        Guid GetTenantID();
+        Guid GetEasyMartID();
 
         /// <summary>
         /// Lấy FullName từ header "X-FullName" trong HTTP request hiện tại.

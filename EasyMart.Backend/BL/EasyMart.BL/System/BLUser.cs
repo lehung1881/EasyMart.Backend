@@ -25,14 +25,14 @@ namespace EasyMart.BL.System
             // 1. Định nghĩa các tham số
             var placeholders = new Dictionary<string, object>
             {
-                { "TenantID", TenantID },
+                { "EasyMartID", EasyMartID },
                 { "UserID", UserID }
             };
 
             // 2. Gọi GetOrCreateAsync: Nếu có cache thì lấy luôn, nếu chưa có thì chạy hàm lambda bên dưới
             var userPermission = await _cacheService.GetOrCreateAsync(
                 CacheItemName.UserPermission,
-                () => BaseGetPermissionFromDbAsync(TenantID, UserID),
+                () => BaseGetPermissionFromDbAsync(EasyMartID, UserID),
                 placeholders
             );
 
@@ -42,9 +42,9 @@ namespace EasyMart.BL.System
         /// <summary>
         /// Hàm gốc chọc vào Database lấy dữ liệu (Chỉ bị gọi khi hụt cache)
         /// </summary>
-        private async Task<List<SysMscPermissionMapping>> BaseGetPermissionFromDbAsync(Guid tenantID, Guid userID)
+        private async Task<List<SysMscPermissionMapping>> BaseGetPermissionFromDbAsync(Guid easyMartID, Guid userID)
         {
-            return await DLObject.BaseGetPermissionFromDbAsync(tenantID, userID);
+            return await DLObject.BaseGetPermissionFromDbAsync(easyMartID, userID);
         }
     }
 }

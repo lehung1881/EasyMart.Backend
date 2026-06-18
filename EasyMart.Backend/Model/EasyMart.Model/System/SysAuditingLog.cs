@@ -65,6 +65,6 @@ namespace EasyMart.Model.System
         /// <summary>
         /// ID công ty (Tenant)
         /// </summary>
-        public Guid TenantID { get; set; }
+        public Guid EasyMartID { get; set; }
     }
 }

@@ -72,21 +72,21 @@ namespace BASE.Service.Core.BL
             }
         }
 
-        private Guid _tenantID = Guid.Empty;
+        private Guid _easyMartID = Guid.Empty;
 
         /// <summary>
-        /// ID của tenant hiện tại, lấy từ header "X-TenantID".
+        /// ID của tenant hiện tại, lấy từ header "X-EasyMartID".
         /// Được khởi tạo lazy: chỉ gọi AuthService một lần, các lần sau lấy từ cache.
         /// </summary>
-        protected Guid TenantID
+        protected Guid EasyMartID
         {
             get
             {
-                if (_tenantID == Guid.Empty)
+                if (_easyMartID == Guid.Empty)
                 {
-                    _tenantID = _authService.GetTenantID();
+                    _easyMartID = _authService.GetEasyMartID();
                 }
-                return _tenantID;
+                return _easyMartID;
             }
         }
 
@@ -113,11 +113,11 @@ namespace BASE.Service.Core.BL
         #region Public Methods
 
         /// <summary>
-        /// Lấy connection theo tenantID (customer DB)
+        /// Lấy connection theo easyMartID (customer DB)
         /// </summary>
         protected virtual async Task<IDbConnection> GetConnectionAsync()
         {
-            return await _mySQLService.GetDBConnectionAsync(TenantID);
+            return await _mySQLService.GetDBConnectionAsync(EasyMartID);
         }
 
         /// <summary>
@@ -128,7 +128,7 @@ namespace BASE.Service.Core.BL
         /// <returns>Bản ghi tương ứng với ID hoặc null nếu không tìm thấy.</returns>
         public async Task<T> GetDataByID<T>(string id) where T : BaseModel
         {
-            return await _mySQLService.GetDataByID<T>(TenantID, id);
+            return await _mySQLService.GetDataByID<T>(EasyMartID, id);
         }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace BASE.Service.Core.BL
         /// <returns>Bản ghi tương ứng với ID hoặc null nếu không tìm thấy.</returns>
         public async Task<object> GetDataByID(Type modelType, string id, string columns = "*")
         {
-            return await _mySQLService.GetDataByID(TenantID, modelType, id);
+            return await _mySQLService.GetDataByID(EasyMartID, modelType, id);
         }
 
         /// <summary>
@@ -149,7 +149,7 @@ namespace BASE.Service.Core.BL
         /// <returns><see cref="PagingResponse"/> chứa danh sách bản ghi và thông tin phân trang.</returns>
         public async Task<PagingResponse> GetDataPaging(PagingRequest pagingRequest)
         {
-            return await _mySQLService.GetDataPaging(TenantID, pagingRequest);
+            return await _mySQLService.GetDataPaging(EasyMartID, pagingRequest);
         }
 
         /// <summary>
@@ -209,7 +209,7 @@ namespace BASE.Service.Core.BL
             types.AddRange(detailItemTypes);
 
             var results = await _mySQLService.QueryMultipleUsingCommandText(
-                TenantID,
+                EasyMartID,
                 sqlBuilder.ToString(),
                 types,
                 param

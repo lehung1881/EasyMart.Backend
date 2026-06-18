@@ -44,18 +44,18 @@ namespace BASE.Service.Core.Services
         }
 
         /// <summary>
-        /// Lấy TenantID từ header "X-TenantID" trong HTTP request hiện tại.
+        /// Lấy EasyMartID từ header "X-EasyMartID" trong HTTP request hiện tại.
         /// </summary>
         /// <returns>
         /// Trả về Guid đại diện cho ID tenant nếu tồn tại,
         /// ngược lại trả về Guid.Empty.
         /// </returns>
-        public Guid GetTenantID()
+        public Guid GetEasyMartID()
         {
-            string tenantID = _httpContext.HttpContext?.Request?.Headers["X-TenantID"];
-            if (!string.IsNullOrEmpty(tenantID))
+            string easyMartID = _httpContext.HttpContext?.Request?.Headers["X-EasyMartID"];
+            if (!string.IsNullOrEmpty(easyMartID))
             {
-                return Guid.Parse(tenantID);
+                return Guid.Parse(easyMartID);
             }
             return Guid.Empty;
         }

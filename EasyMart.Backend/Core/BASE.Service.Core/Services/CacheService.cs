@@ -36,7 +36,7 @@ namespace BASE.Service.Core.Services
         /// <summary>
         /// lvhung - 17.06.2026
         /// Resolve cache key từ CacheItemName + dictionary placeholder.
-        /// VD: "IsConnectedAmisProcess_{TenantID}" + {TenantID: "abc"} => "IsConnectedAmisProcess_abc"
+        /// VD: "IsConnectedAmisProcess_{EasyMartID}" + {EasyMartID: "abc"} => "IsConnectedAmisProcess_abc"
         /// </summary>
         private string ResolveCacheKey(string cacheItemName, Dictionary<string, object>? placeholders = null)
         {

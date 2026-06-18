@@ -10,17 +10,17 @@ namespace BASE.Service.Core.Model
         /// Khóa chính
         /// </summary>
         [Key]
-        public Guid TenantID { get; set; }
+        public Guid EasyMartID { get; set; }
 
         /// <summary>
         /// Mã định danh khách hàng (vd: CUST_001)
         /// </summary>
-        public string TenantCode { get; set; }
+        public string EasyMartCode { get; set; }
 
         /// <summary>
         /// Tên khách hàng
         /// </summary>
-        public string TenantName { get; set; }
+        public string EasyMartName { get; set; }
 
         /// <summary>
         /// Email liên hệ

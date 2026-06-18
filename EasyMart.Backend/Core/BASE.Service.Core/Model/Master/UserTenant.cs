@@ -13,7 +13,7 @@ namespace BASE.Service.Core.Model
         /// <summary>
         /// ID khách hàng (PK, không FK - chấp nhận dư thừa)
         /// </summary>
-        public Guid TenantID { get; set; }
+        public Guid EasyMartID { get; set; }
 
         /// <summary>
         /// Thời điểm gán

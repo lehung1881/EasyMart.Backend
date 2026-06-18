@@ -15,7 +15,7 @@ namespace BASE.Service.Core.Model
         /// <summary>
         /// ID khách hàng (không FK - chấp nhận dư thừa)
         /// </summary>
-        public Guid TenantID { get; set; }
+        public Guid EasyMartID { get; set; }
 
         /// <summary>
         /// Mã ứng dụng

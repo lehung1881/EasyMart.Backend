@@ -18,7 +18,7 @@ namespace BASE.Service.Core.Model.Cache
         public CacheType Type { get; set; }
 
         /// <summary>
-        /// Pattern của key, có thể chứa placeholder như {TenantID}
+        /// Pattern của key, có thể chứa placeholder như {EasyMartID}
         /// </summary>
         public string KeyPattern { get; set; } = string.Empty;
 

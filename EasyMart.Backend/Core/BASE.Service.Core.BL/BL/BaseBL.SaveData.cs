@@ -982,7 +982,7 @@ namespace BASE.Service.Core.BL
         /// </summary>
         protected virtual async Task<List<string>> GetColumnByTableNameAsync(string tableName, IDbConnection cnn, IDbTransaction tran = null)
         {
-            var cacheKey = $"{tableName}_{_easyMartID.ToString()}";
+            var cacheKey = $"{tableName}_{_easymartID.ToString()}";
 
             if (_columnCache.TryGetValue(cacheKey, out var cached))
                 return cached;

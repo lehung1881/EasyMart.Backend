@@ -72,7 +72,7 @@ namespace BASE.Service.Core.BL
             }
         }
 
-        private Guid _easyMartID = Guid.Empty;
+        private Guid _easymartID = Guid.Empty;
 
         /// <summary>
         /// ID của Easymart hiện tại, lấy từ header "X-EasyMartID".
@@ -82,11 +82,11 @@ namespace BASE.Service.Core.BL
         {
             get
             {
-                if (_easyMartID == Guid.Empty)
+                if (_easymartID == Guid.Empty)
                 {
-                    _easyMartID = _authService.GetEasyMartID();
+                    _easymartID = _authService.GetEasyMartID();
                 }
-                return _easyMartID;
+                return _easymartID;
             }
         }
 
@@ -112,12 +112,12 @@ namespace BASE.Service.Core.BL
 
         #region Public Methods
         /// <summary>
-        /// Set giá trị cho _easyMartID
+        /// Set giá trị cho _easymartID
         /// </summary>
         /// <param name="easymartID"></param>
         public void SetEasyMartID(Guid easymartID)
         {
-            _easyMartID = easymartID;
+            _easymartID = easymartID;
         }
 
         /// <summary>

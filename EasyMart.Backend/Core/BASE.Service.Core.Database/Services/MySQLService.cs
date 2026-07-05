@@ -381,8 +381,9 @@ namespace BASE.Service.Core.Database
         /// <returns></returns>
         public PagingSQLBuilder GenerateSqlPaging(PagingRequest request)
         {
-            var parameters = new Dictionary<string, object>();
-            var whereClause = BuildWhereClause(request.Filter, parameters);
+            var builder = new FilterQueryBuilder();
+            var (whereClause, parameters) = builder.Build(request.Filter);
+
             var orderByClause = BuildOrderByClause(request.Sort);
             var columns = string.IsNullOrWhiteSpace(request.Columns) ? "*" : request.Columns;
             var tableName = request.ViewOrTableName;
@@ -471,28 +472,66 @@ namespace BASE.Service.Core.Database
 
 
         /// <summary>
-        /// Build mệnh đề WHERE từ danh sách FilterCondition.
+        /// Build mệnh đề WHERE từ danh sách FilterCondition, có xét đến Operand (1: AND, 2: OR)
+        /// để gộp nhóm điều kiện đúng theo ngữ nghĩa (các điều kiện AND liên tiếp được gom vào
+        /// một nhóm, các nhóm được nối với nhau bằng OR).
         /// </summary>
-        private string BuildWhereClause(List<FilterCondition> filters, Dictionary<string, object> parameters)
+        private void BuildWhereClause(List<FilterCondition> filters, Dictionary<string, object> parameters)
         {
-            if (filters == null || filters.Count == 0)
-                return string.Empty;
+            //if (filters == null || filters.Count == 0)
+            //    return string.Empty;
 
-            var conditions = new List<string>();
+            //const int OPERAND_OR = 2;
 
-            for (int i = 0; i < filters.Count; i++)
-            {
-                var filter = filters[i];
-                var paramName = $"@p{i}";
-                var condition = BuildSingleCondition(filter, paramName, parameters, i);
+            //var groups = new List<List<string>>();
+            //var currentGroup = new List<string>();
 
-                if (!string.IsNullOrEmpty(condition))
-                {
-                    conditions.Add(condition);
-                }
-            }
+            //for (int i = 0; i < filters.Count; i++)
+            //{
+            //    var filter = filters[i];
+            //    var paramName = $"@p{i}";
+            //    var condition = BuildSingleCondition(filter, paramName, parameters, i);
 
-            return conditions.Count > 0 ? string.Join(" AND ", conditions) : string.Empty;
+            //    if (string.IsNullOrEmpty(condition))
+            //        continue;
+
+            //    // Phần tử đầu tiên luôn mở nhóm mới (Operand của nó không có ý nghĩa nối).
+            //    // Operand = OR => bắt đầu nhóm mới (nhóm cũ được nối OR với nhóm hiện tại).
+            //    // Operand = AND (mặc định) => gộp vào nhóm hiện tại.
+            //    var isNewGroup = currentGroup.Count == 0 || filter.Operand == OPERAND_OR;
+
+            //    if (isNewGroup)
+            //    {
+            //        if (currentGroup.Count > 0)
+            //            groups.Add(currentGroup);
+
+            //        currentGroup = new List<string> { condition };
+            //    }
+            //    else
+            //    {
+            //        currentGroup.Add(condition);
+            //    }
+            //}
+
+            //if (currentGroup.Count > 0)
+            //    groups.Add(currentGroup);
+
+            //if (groups.Count == 0)
+            //    return string.Empty;
+
+            //// Mỗi nhóm nối bằng AND. Chỉ bọc ngoặc khi có từ 2 nhóm trở lên (tức có OR ở cấp cao nhất)
+            //// và nhóm đó có nhiều hơn 1 điều kiện, để tránh dư ngoặc không cần thiết.
+            //var groupClauses = groups
+            //    .Select(group =>
+            //    {
+            //        var andClause = string.Join(" AND ", group);
+            //        return groups.Count > 1 && group.Count > 1
+            //            ? $"({andClause})"
+            //            : andClause;
+            //    })
+            //    .ToList();
+
+            //return string.Join(" OR ", groupClauses);
         }
 
         /// <summary>

@@ -151,7 +151,17 @@ namespace BASE.Service.Core.Enum
         /// <summary>
         /// Nằm trong khoảng (BETWEEN).
         /// </summary>
-        Between = 15
+        Between = 15,
+
+        /// <summary>
+        /// Là null hoặc rỗng.
+        /// </summary>
+        IsNull = 16,
+
+        /// <summary>
+        /// Không null
+        /// </summary>
+        IsNotNull = 17,
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 ﻿using BASE.Service.Core.Enum;
+using BASE.Service.Core.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,9 +19,9 @@ namespace BASE.Service.Core.Model
         public List<SortCondition> Sort { get; set; }
 
         /// <summary>
-        /// Danh sách điều kiện lọc dữ liệu.
+        /// Điều kiện lọc dữ liệu.
         /// </summary>
-        public List<FilterCondition> Filter { get; set; }
+        public FilterCondition Filter { get; set; }
 
         /// <summary>
         /// Danh sách các cột cần lấy dữ liệu (phân tách bởi dấu phẩy hoặc định dạng tùy chỉnh).
@@ -75,34 +76,61 @@ namespace BASE.Service.Core.Model
     }
 
     /// <summary>
-    /// Model đại diện cho một điều kiện lọc dữ liệu.
+    /// Đại diện cho một node trong cây bộ lọc (Filter Tree).
+    /// Node này có thể là một điều kiện đơn lẻ (Condition) hoặc một nhóm các điều kiện lồng nhau (Group).
     /// </summary>
     public class FilterCondition
     {
         /// <summary>
-        /// Tên thuộc tính (cột) cần lọc.
+        /// Xác định loại của node hiện tại (Là điều kiện đơn hay là một nhóm điều kiện).
         /// </summary>
-        public string Property { get; set; }
+        /// <value>Mặc định là <see cref="FilterNodeType.Condition"/>.</value>
+        public FilterNodeType NodeType { get; set; } = FilterNodeType.Condition;
+
+        #region Các thuộc tính dành riêng cho NodeType = Condition
 
         /// <summary>
-        /// Giá trị dùng để so sánh khi lọc (có thể là string, số, DateTime,...).
+        /// Tên thuộc tính hoặc trường dữ liệu cần áp dụng bộ lọc (ví dụ: "Age", "CreatedDate").
         /// </summary>
-        public object Value { get; set; }
+        /// <remarks>Chỉ có giá trị và được sử dụng khi <see cref="NodeType"/> là <see cref="FilterNodeType.Condition"/>.</remarks>
+        public string? Property { get; set; }
 
         /// <summary>
-        /// Toán tử so sánh.
+        /// Giá trị dùng để so sánh trong điều kiện lọc.
         /// </summary>
+        /// <remarks>Chỉ có giá trị và được sử dụng khi <see cref="NodeType"/> là <see cref="FilterNodeType.Condition"/>.</remarks>
+        public object? Value { get; set; }
+
+        /// <summary>
+        /// Toán tử so sánh được áp dụng cho điều kiện (ví dụ: Equal, GreaterThan, Contains).
+        /// </summary>
+        /// <remarks>Chỉ có giá trị và được sử dụng khi <see cref="NodeType"/> là <see cref="FilterNodeType.Condition"/>.</remarks>
         public FilterOperator Operator { get; set; }
 
         /// <summary>
-        /// Toán hạng xác định ngữ cảnh lọc.
+        /// Kiểu dữ liệu của thuộc tính cần lọc (ví dụ: String, Number, DateTime, Boolean).
         /// </summary>
-        public int Operand { get; set; }
+        /// <remarks>Chỉ có giá trị và được sử dụng khi <see cref="NodeType"/> là <see cref="FilterNodeType.Condition"/>.</remarks>
+        public DataType DataType { get; set; }
+
+        #endregion
+
+        #region Các thuộc tính dành riêng cho NodeType = Group
 
         /// <summary>
-        /// Kiểu dữ liệu của thuộc tính.
+        /// Toán tử logic dùng để liên kết các điều kiện con bên trong nhóm (AND hoặc OR).
         /// </summary>
-        public DataType DataType { get; set; }
+        /// <value>Mặc định là <see cref="LogicalOperator.And"/>.</value>
+        /// <remarks>Chỉ có giá trị và được sử dụng khi <see cref="NodeType"/> là <see cref="FilterNodeType.Group"/>.</remarks>
+        public LogicalOperator LogicalOperator { get; set; } = LogicalOperator.And;
+
+        /// <summary>
+        /// Danh sách các điều kiện con hoặc nhóm con thuộc về nhóm hiện tại.
+        /// </summary>
+        /// <remarks>Chỉ có giá trị và được sử dụng khi <see cref="NodeType"/> là <see cref="FilterNodeType.Group"/>.</remarks>
+        public List<FilterCondition> Children { get; set; } = new();
+
+        #endregion
     }
 
     /// <summary>
